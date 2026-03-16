@@ -1,31 +1,44 @@
 # Stone Towers
 
-A first-person dungeon crawler game originally written in **Turbo Pascal 7** for MS-DOS, developed by **raist**, **ernie** and **dusty** throughout the 1990s.
+A Czech indie DOS game originally written in **Turbo Pascal 7** for MS-DOS, developed by **raist**, **ernie** and **dusty** throughout the 1990s.
 
 ## Play in your browser
 
 **[hugoshamrock.github.io/stone-towers](https://hugoshamrock.github.io/stone-towers/)**
 
-Controls: `W/↑` forward · `S/↓` back · `A/←` turn left · `D/→` turn right · `Q/E` strafe · `M` minimap
+The landing page offers three playable versions:
+
+| Game | Type | Description |
+|------|------|-------------|
+| **Dungeon Walker** | First-person 3D | Explore a 20×20 stone maze. DDA raycasting engine based on `ENGINE.PAS`. |
+| **The Adventure** | Point-and-click RPG | Navigate a dungeon, collect items, cast spells, solve puzzles. Procedural graphics. |
+| **The Adventure — Original Graphics** | Point-and-click RPG | Same game, rendered with the authentic 1995 VGA artwork (129 GIF files from the original archive). |
 
 ## What is this?
 
-Stone Towers is a classic Czech indie DOS game — a tile-based, first-person dungeon explorer in the spirit of early Wolfenstein 3D. The player navigates a 20×20 grid map while the engine renders corridor-style wall slices using VGA 256-color graphics (320×200).
+The original Stone Towers codebase contains two distinct games:
+
+**Dungeon Walker** (`ENGINE.PAS`, iterations `149.PAS`–`250.PAS`) — a tile-based first-person dungeon explorer in the spirit of early Wolfenstein 3D. The player navigates a 20×20 grid while the engine renders corridor-style wall slices using VGA 256-color graphics (320×200).
+
+**The Adventure** (`STONET/STONET.PAS`) — a point-and-click RPG with mouse support, inventory, spells, NPCs, and puzzle chains. Pre-rendered 320×200 GIF scenes are layered with animated sprite overlays.
 
 The original codebase includes:
-- A custom rendering engine (`ENGINE.PAS`) with EMS memory management for texture paging
+- A custom raycasting engine (`ENGINE.PAS`) with EMS memory management for texture paging
 - VGA 256-color graphics mode handler
-- GIF image loader for textures (doom, wood, hell themes)
+- GIF image loader and layered scene compositor
 - CMF/Sound Blaster FM music system
 - INI-based level configuration
-- Multiple iterated source revisions (`149.PAS` through `250.PAS`) documenting the evolution of the engine
+- 129 original GIF87a artwork files
 
 The project was never publicly released and remains unfinished.
 
 ## Repository structure
 
 ```
-index.html        — web port, playable in any modern browser
+index.html        — game hub / landing page
+walker.html       — Dungeon Walker (first-person 3D)
+adventure.html    — The Adventure (procedural graphics)
+original.html     — The Adventure (original 1995 GIF artwork)
 original-dos/
   stonet1/        — main game source code and assets (Turbo Pascal, ~18 MB)
     ENGINE.PAS        core rendering engine
@@ -34,7 +47,7 @@ original-dos/
     TEXTURES/         wall texture data
     CMF/              music files (Creative Music Format)
     WIZ/              game asset directories
-    STONET/           compiled game and installer
+    STONET/           compiled game, installer, and 129 GIF artwork files
   stonet2/        — second version / graphics library (lostGFX, 640×480×256 mode)
 ```
 
