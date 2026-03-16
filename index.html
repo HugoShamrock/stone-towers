@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="cs">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -99,7 +99,6 @@
 
     .card:hover .card-title { color: #d4a830; }
 
-    /* type badges */
     .badges {
       display: flex;
       flex-wrap: wrap;
@@ -169,6 +168,390 @@
       margin: 0 24px;
     }
 
+    /* ── STORY ── */
+    .story-block {
+      width: 100%;
+      max-width: 860px;
+      padding: 20px 48px 40px;
+    }
+
+    .story-banner {
+      font-size: 11px;
+      letter-spacing: 2px;
+      color: #4a3a18;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .story-title {
+      font-size: 14px;
+      font-weight: bold;
+      color: #8a6820;
+      letter-spacing: 2px;
+      text-align: center;
+      margin-bottom: 24px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #1e1608;
+    }
+
+    .story-text {
+      font-size: 12px;
+      color: #786040;
+      line-height: 2;
+      white-space: pre-line;
+      text-align: left;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+
+    .story-spell {
+      margin-top: 24px;
+      padding: 14px 20px;
+      border: 1px solid #1e1a08;
+      background: #0a0806;
+      font-size: 11px;
+      color: #5a4820;
+      line-height: 1.9;
+      font-style: italic;
+      max-width: 560px;
+      margin: 24px auto 0;
+    }
+
+    .story-credit {
+      font-size: 10px;
+      color: #3a2c14;
+      letter-spacing: 2px;
+      text-align: right;
+      margin-top: 20px;
+      max-width: 560px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* ── GALLERY ── */
+    .gallery-section {
+      width: 100%;
+      max-width: 860px;
+      padding: 16px 24px 40px;
+    }
+
+    .gallery-subtitle {
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: #2e2210;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .gallery-hero {
+      width: 100%;
+      border: 1px solid #1e1608;
+      margin-bottom: 12px;
+      display: block;
+      image-rendering: pixelated;
+    }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .gallery-item {
+      background: #0a0806;
+      border: 1px solid #1a1206;
+      overflow: hidden;
+      transition: border-color 0.15s;
+    }
+
+    .gallery-item:hover { border-color: #4a3412; }
+
+    .gallery-item img {
+      width: 100%;
+      height: 160px;
+      object-fit: contain;
+      display: block;
+      image-rendering: pixelated;
+      background: #050402;
+    }
+
+    .gallery-item .img-caption {
+      padding: 6px 8px;
+      font-size: 9px;
+      color: #3a2c14;
+      letter-spacing: 1px;
+    }
+
+    .gallery-item .img-dim {
+      float: right;
+      color: #2a1e0c;
+    }
+
+    /* ── ANIMATIONS ── */
+    .anim-section {
+      width: 100%;
+      max-width: 860px;
+      padding: 16px 24px 40px;
+    }
+
+    .anim-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+      gap: 16px;
+    }
+
+    .anim-card {
+      background: #0a0806;
+      border: 1px solid #1a1206;
+      overflow: hidden;
+    }
+
+    .anim-header {
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid #141008;
+    }
+
+    .anim-title {
+      font-size: 13px;
+      font-weight: bold;
+      color: #8a6820;
+      letter-spacing: 1px;
+    }
+
+    .anim-meta {
+      margin-top: 4px;
+      font-size: 9px;
+      color: #3a2c14;
+      letter-spacing: 1px;
+    }
+
+    .anim-desc {
+      padding: 10px 16px;
+      font-size: 11px;
+      color: #4a3a1e;
+      line-height: 1.6;
+    }
+
+    .anim-player {
+      padding: 0 16px 14px;
+    }
+
+    .anim-canvas-wrap {
+      position: relative;
+      background: #000;
+      border: 1px solid #141008;
+      margin-bottom: 8px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .anim-canvas-wrap.visible { display: block; }
+
+    .anim-canvas-wrap canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      image-rendering: pixelated;
+    }
+
+    .progress-wrap {
+      height: 2px;
+      background: #0e0a04;
+      border: 1px solid #1a1206;
+      margin-bottom: 8px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .progress-wrap.visible { display: block; }
+
+    .progress-bar {
+      height: 100%;
+      background: #6a4c18;
+      width: 0%;
+      transition: width 0.1s;
+    }
+
+    .anim-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .anim-btn {
+      font-family: 'Courier New', monospace;
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: #6a4c18;
+      background: none;
+      border: 1px solid #2a1e0c;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .anim-btn:hover { color: #c8a030; border-color: #6a4c18; }
+    .anim-btn:disabled { color: #2a1e0c; border-color: #1a1206; cursor: default; }
+
+    .anim-status {
+      font-size: 9px;
+      color: #3a2c14;
+      letter-spacing: 1px;
+    }
+
+    /* ── STONET2 SECTION ── */
+    .st2-section {
+      width: 100%;
+      max-width: 860px;
+      padding: 16px 24px 40px;
+    }
+
+    .st2-intro {
+      font-size: 12px;
+      color: #5a4820;
+      line-height: 1.8;
+      margin-bottom: 20px;
+      max-width: 680px;
+    }
+
+    .st2-chars {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .st2-char {
+      background: #0a0806;
+      border: 1px solid #1a1206;
+      overflow: hidden;
+      transition: border-color 0.15s;
+    }
+
+    .st2-char:hover { border-color: #3a2810; }
+
+    .st2-char img {
+      width: 100%;
+      display: block;
+      image-rendering: pixelated;
+      background: #050402;
+    }
+
+    .st2-char .char-label {
+      padding: 5px 8px;
+      font-size: 9px;
+      color: #3a2c14;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .st2-screens {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 8px;
+    }
+
+    .st2-screen {
+      background: #0a0806;
+      border: 1px solid #1a1206;
+      overflow: hidden;
+      transition: border-color 0.15s;
+    }
+
+    .st2-screen:hover { border-color: #3a2810; }
+
+    .st2-screen img {
+      width: 100%;
+      display: block;
+      image-rendering: pixelated;
+      background: #050402;
+    }
+
+    .st2-screen .screen-label {
+      padding: 5px 8px;
+      font-size: 9px;
+      color: #3a2c14;
+      letter-spacing: 1px;
+    }
+
+    /* ── TIMELINE ── */
+    .timeline-section {
+      width: 100%;
+      max-width: 860px;
+      padding: 16px 24px 48px;
+    }
+
+    .timeline {
+      position: relative;
+      padding-left: 80px;
+    }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 56px;
+      top: 4px;
+      bottom: 4px;
+      width: 1px;
+      background: #1e1608;
+    }
+
+    .tl-entry {
+      position: relative;
+      margin-bottom: 28px;
+    }
+
+    .tl-entry::before {
+      content: '';
+      position: absolute;
+      left: -28px;
+      top: 5px;
+      width: 5px;
+      height: 5px;
+      background: #3a2810;
+      border: 1px solid #5a3e18;
+    }
+
+    .tl-year {
+      position: absolute;
+      left: -78px;
+      top: 2px;
+      font-size: 10px;
+      font-weight: bold;
+      color: #5a3e18;
+      letter-spacing: 1px;
+      width: 42px;
+      text-align: right;
+    }
+
+    .tl-title {
+      font-size: 12px;
+      font-weight: bold;
+      color: #7a5a20;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    .tl-body {
+      font-size: 11px;
+      color: #4a3a1e;
+      line-height: 1.7;
+    }
+
+    .tl-files {
+      margin-top: 5px;
+      font-size: 9px;
+      color: #3a2c14;
+      letter-spacing: 1px;
+    }
+
+    .tl-files code {
+      color: #4a3818;
+      background: #0c0a04;
+      padding: 1px 4px;
+    }
+
     /* ── FOOTER ── */
     footer {
       width: 100%;
@@ -203,6 +586,14 @@
 
     .footer-links a:hover { color: #8a6030; }
 
+    @media (max-width: 600px) {
+      .logo { font-size: 40px; }
+      .anim-grid { grid-template-columns: 1fr; }
+      .st2-chars { grid-template-columns: repeat(2, 1fr); }
+      .story-block { padding: 20px 24px 40px; }
+      .timeline { padding-left: 60px; }
+      .tl-year { left: -58px; width: 34px; font-size: 9px; }
+    }
   </style>
 </head>
 <body>
@@ -212,11 +603,11 @@
     <div class="tagline">czech dungeon crawler &nbsp;·&nbsp; original 1995 &nbsp;·&nbsp; web port 2025</div>
   </header>
 
+  <!-- ══════════════════════════════════════════ GAMES ══ -->
   <p class="section-title">— choose a game —</p>
 
   <div class="games">
 
-    <!-- DUNGEON WALKER -->
     <a class="card" href="walker.html">
       <div class="card-header">
         <div class="card-title">Dungeon Walker</div>
@@ -240,7 +631,6 @@
       </div>
     </a>
 
-    <!-- THE ADVENTURE -->
     <a class="card" href="adventure.html">
       <div class="card-header">
         <div class="card-title">The Adventure</div>
@@ -264,7 +654,6 @@
       </div>
     </a>
 
-    <!-- ORIGINAL GRAPHICS -->
     <a class="card" href="original.html">
       <div class="card-header">
         <div class="card-title">The Adventure<br><small style="font-size:12px;font-weight:normal;color:#6a5030">Original Graphics</small></div>
@@ -289,6 +678,414 @@
 
   </div>
 
+  <div class="divider"></div>
+
+  <!-- ══════════════════════════════════════════ STORY ══ -->
+  <p class="section-title">— the story —</p>
+
+  <div class="story-block">
+    <div class="story-banner">STONETOW.ERS &nbsp;·&nbsp; © 1995 WIZ &nbsp;·&nbsp; Windows-1250 / CP852</div>
+    <div class="story-title">STONE TOWERS &ldquo;The First Enchantment&rdquo;</div>
+
+    <p class="story-text">Poslyšte jak tento příběh sestupuje k vám,
+podoben dešti z nebes nebo slzám.
+
+
+Dávno zapomenutá zem kamenných věží Torwen
+v dobách, kdy černé stíny pohltily den.
+S nimi přišel zlý pán a staré mágy vyhnal ven.
+
+Zem zmítala se v bouři, cesty a města plné života,
+zaplnily stíny a temnota.
+
+
+Ragon pán zla přemístil se na svůj hrad,
+okolo sebe zrudy, stíny, z kterých jde hruza a strach.
+
+Od věku do věku stíny tu budou.
+Mnoho hrdinů chtělo temnotu zničit,
+všichni poznali na konci své cesty krev rudou.
+
+
+Tam daleko v lesích, kde ještě svítí slunce.
+Je šest mnichů z této temné země,
+oni jediní umí zaříkadlo smrti
+z kouzelných krystalů vyčíst.
+
+Ale od dob, kdy stíny z temné hloubky povstaly a zemi pohltily,
+tři kouzelné krystaly zmizely.
+
+
+Teď jsi tu ty jediný.
+Vyber sobě jednoho mnicha
+a po magickém obřadu
+budeš polovinu zaříkadla smrti znát.
+
+Nyní je třeba na dlouhou cestu se dát.
+
+
+Ať z kamenných věží velký mág sílu ti dá.</p>
+
+    <div class="story-spell">Zaříkadlo smrti &mdash; 1 &ldquo;Nechť objeví se zde světlo věčné<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a můj čarodějný svitek,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2&nbsp; toto zaříkadlo smrti černým silám řekne.&rdquo;</div>
+
+    <div class="story-credit">(c) 1995 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; WIZ</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ════════════════════════════════════════ ARTWORK ══ -->
+  <p class="section-title">— original artwork —</p>
+
+  <div class="gallery-section">
+
+    <div class="gallery-subtitle">stonet1 &nbsp;·&nbsp; BMP sprite sheets &nbsp;·&nbsp; 8-bit VGA palettized</div>
+
+    <img class="gallery-hero"
+         src="original-dos/stonet1/BMP/STARTMSC.BMP"
+         alt="Stone Towers title screen (STARTMSC.BMP, 491×248)"
+         title="STARTMSC.BMP — title / menu art, 491×248">
+
+    <div class="gallery-grid">
+      <div class="gallery-item">
+        <img src="original-dos/stonet1/BMP/MONST1.BMP" alt="Monster sprites sheet 1" title="MONST1.BMP — monster sprites, 224×360">
+        <div class="img-caption">MONST1 &mdash; monsters <span class="img-dim">224×360</span></div>
+      </div>
+      <div class="gallery-item">
+        <img src="original-dos/stonet1/BMP/MONST2.BMP" alt="Monster sprites sheet 2" title="MONST2.BMP — more monsters, 168×360">
+        <div class="img-caption">MONST2 &mdash; monsters <span class="img-dim">168×360</span></div>
+      </div>
+      <div class="gallery-item">
+        <img src="original-dos/stonet1/BMP/PCS.BMP" alt="Character sprites" title="PCS.BMP — character sprites, 224×216">
+        <div class="img-caption">PCS &mdash; characters <span class="img-dim">224×216</span></div>
+      </div>
+      <div class="gallery-item">
+        <img src="original-dos/stonet1/BMP/ITEM.BMP" alt="Item sprites" title="ITEM.BMP — item sprites, 168×144">
+        <div class="img-caption">ITEM &mdash; items <span class="img-dim">168×144</span></div>
+      </div>
+      <div class="gallery-item">
+        <img src="original-dos/stonet1/BMP/MIXED.BMP" alt="Mixed sprites" title="MIXED.BMP — mixed sprites, 174×229">
+        <div class="img-caption">MIXED &mdash; misc <span class="img-dim">174×229</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ══════════════════════════════════════ ANIMATIONS ══ -->
+  <p class="section-title">— animations (FLI format) —</p>
+
+  <div class="anim-section">
+
+    <div class="anim-grid">
+
+      <div class="anim-card">
+        <div class="anim-header">
+          <div class="anim-title">GAME6.FLI</div>
+          <div class="anim-meta">1992 &nbsp;·&nbsp; 320×200 &nbsp;·&nbsp; 61 frames &nbsp;·&nbsp; ~2.6 fps &nbsp;·&nbsp; 1.0 MB</div>
+        </div>
+        <div class="anim-desc">Earliest surviving animation from December 1992 — the original game prototype, three years before the final release.</div>
+        <div class="anim-player" data-src="original-dos/stonet1/STONET/GAME6.FLI">
+          <div class="anim-canvas-wrap"><canvas></canvas></div>
+          <div class="progress-wrap"><div class="progress-bar"></div></div>
+          <div class="anim-controls">
+            <button class="anim-btn load-btn">LOAD</button>
+            <button class="anim-btn play-pause-btn" disabled>PLAY</button>
+            <span class="anim-status">not loaded</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="anim-card">
+        <div class="anim-header">
+          <div class="anim-title">ANIMACE2.FLI</div>
+          <div class="anim-meta">1992 &nbsp;·&nbsp; 320×200 &nbsp;·&nbsp; 790 KB</div>
+        </div>
+        <div class="anim-desc">A second animation sequence from the same 1992 development session as GAME6. Companion piece to the earliest prototype.</div>
+        <div class="anim-player" data-src="original-dos/stonet1/STONET/ANIMACE2.FLI">
+          <div class="anim-canvas-wrap"><canvas></canvas></div>
+          <div class="progress-wrap"><div class="progress-bar"></div></div>
+          <div class="anim-controls">
+            <button class="anim-btn load-btn">LOAD</button>
+            <button class="anim-btn play-pause-btn" disabled>PLAY</button>
+            <span class="anim-status">not loaded</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="anim-card">
+        <div class="anim-header">
+          <div class="anim-title">GM_OUT.FLI</div>
+          <div class="anim-meta">1992 &nbsp;·&nbsp; 320×200 &nbsp;·&nbsp; 135 KB</div>
+        </div>
+        <div class="anim-desc">Game outro / endgame sequence from December 1992. Plays at the conclusion of the earliest prototype build.</div>
+        <div class="anim-player" data-src="original-dos/stonet1/STONET/GM_OUT.FLI">
+          <div class="anim-canvas-wrap"><canvas></canvas></div>
+          <div class="progress-wrap"><div class="progress-bar"></div></div>
+          <div class="anim-controls">
+            <button class="anim-btn load-btn">LOAD</button>
+            <button class="anim-btn play-pause-btn" disabled>PLAY</button>
+            <span class="anim-status">not loaded</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="anim-card">
+        <div class="anim-header">
+          <div class="anim-title">GM_FLI2.FLI</div>
+          <div class="anim-meta">1995 &nbsp;·&nbsp; 320×200 &nbsp;·&nbsp; 183 KB</div>
+        </div>
+        <div class="anim-desc">A 1995-era animation, coinciding with the final development push that produced the 129 GIF artwork files and the STONETOW.ERS story.</div>
+        <div class="anim-player" data-src="original-dos/stonet1/STONET/GM_FLI2.FLI">
+          <div class="anim-canvas-wrap"><canvas></canvas></div>
+          <div class="progress-wrap"><div class="progress-bar"></div></div>
+          <div class="anim-controls">
+            <button class="anim-btn load-btn">LOAD</button>
+            <button class="anim-btn play-pause-btn" disabled>PLAY</button>
+            <span class="anim-status">not loaded</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="anim-card">
+        <div class="anim-header">
+          <div class="anim-title">CRYSTAL.FLI</div>
+          <div class="anim-meta">January 1997 &nbsp;·&nbsp; 320×200 &nbsp;·&nbsp; 16 frames &nbsp;·&nbsp; 272 KB</div>
+        </div>
+        <div class="anim-desc">The animated crystal effect from the WIZ/NEW11 asset directory. The three magic crystals feature prominently in the game's story — finding them is the central quest.</div>
+        <div class="anim-player" data-src="original-dos/stonet1/WIZ/NEW11/CRYSTAL.FLI">
+          <div class="anim-canvas-wrap"><canvas></canvas></div>
+          <div class="progress-wrap"><div class="progress-bar"></div></div>
+          <div class="anim-controls">
+            <button class="anim-btn load-btn">LOAD</button>
+            <button class="anim-btn play-pause-btn" disabled>PLAY</button>
+            <span class="anim-status">not loaded</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="anim-card">
+        <div class="anim-header">
+          <div class="anim-title">STONWAT.FLI</div>
+          <div class="anim-meta">January 1997 &nbsp;·&nbsp; 320×200 &nbsp;·&nbsp; 2 frames &nbsp;·&nbsp; 48 KB</div>
+        </div>
+        <div class="anim-desc">A short two-frame water / environment loop from the WIZ/NEW10 directory, likely intended as a scene transition or background effect.</div>
+        <div class="anim-player" data-src="original-dos/stonet1/WIZ/NEW10/STONWAT.FLI">
+          <div class="anim-canvas-wrap"><canvas></canvas></div>
+          <div class="progress-wrap"><div class="progress-bar"></div></div>
+          <div class="anim-controls">
+            <button class="anim-btn load-btn">LOAD</button>
+            <button class="anim-btn play-pause-btn" disabled>PLAY</button>
+            <span class="anim-status">not loaded</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="anim-card">
+        <div class="anim-header">
+          <div class="anim-title">DEMO.FLI</div>
+          <div class="anim-meta">March 1997 &nbsp;·&nbsp; 320×200 &nbsp;·&nbsp; 33 frames &nbsp;·&nbsp; 384 KB</div>
+        </div>
+        <div class="anim-desc">The game demo animation, the last known piece of stonet1 development. Created two years after the main artwork, suggesting a planned but never-released public demo.</div>
+        <div class="anim-player" data-src="original-dos/stonet1/DEMO.FLI">
+          <div class="anim-canvas-wrap"><canvas></canvas></div>
+          <div class="progress-wrap"><div class="progress-bar"></div></div>
+          <div class="anim-controls">
+            <button class="anim-btn load-btn">LOAD</button>
+            <button class="anim-btn play-pause-btn" disabled>PLAY</button>
+            <span class="anim-status">not loaded</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ════════════════════════════════════ STONE TOWERS 2 ══ -->
+  <p class="section-title">— stone towers II —</p>
+
+  <div class="st2-section">
+
+    <p class="st2-intro">
+      A completely independent reimagining begun in late 1998, two years after stonet1 development ended.
+      Stone Towers II used an entirely new engine targeting 640×480 in 256-color mode with CEL-format
+      sprites (64 KB each). Seven distinct executable builds survive (versions 230X through 453X), showing
+      active iteration through early 1999. The project was never released.
+    </p>
+
+    <div class="gallery-subtitle">character portraits &nbsp;·&nbsp; 320×200 GIF &nbsp;·&nbsp; January 1999</div>
+    <div class="st2-chars">
+      <div class="st2-char">
+        <img src="original-dos/stonet2/CHB1.GIF" alt="Character portrait 1">
+        <div class="char-label">Character I</div>
+      </div>
+      <div class="st2-char">
+        <img src="original-dos/stonet2/CHB2.GIF" alt="Character portrait 2">
+        <div class="char-label">Character II</div>
+      </div>
+      <div class="st2-char">
+        <img src="original-dos/stonet2/CHB3.GIF" alt="Character portrait 3">
+        <div class="char-label">Character III</div>
+      </div>
+      <div class="st2-char">
+        <img src="original-dos/stonet2/CHB4.GIF" alt="Character portrait 4">
+        <div class="char-label">Character IV</div>
+      </div>
+    </div>
+
+    <div class="gallery-subtitle" style="margin-top:16px">game screens &nbsp;·&nbsp; 320×200 GIF &nbsp;·&nbsp; December 1998 – January 1999</div>
+    <div class="st2-screens">
+      <div class="st2-screen">
+        <img src="original-dos/stonet2/B.GIF" alt="Game screen B">
+        <div class="screen-label">B.GIF &mdash; main screen</div>
+      </div>
+      <div class="st2-screen">
+        <img src="original-dos/stonet2/L.GIF" alt="Game screen L">
+        <div class="screen-label">L.GIF &mdash; level / dungeon</div>
+      </div>
+      <div class="st2-screen">
+        <img src="original-dos/stonet2/P.GIF" alt="Game screen P">
+        <div class="screen-label">P.GIF &mdash; player / combat</div>
+      </div>
+      <div class="st2-screen">
+        <img src="original-dos/stonet2/1.GIF" alt="Scene 1">
+        <div class="screen-label">1.GIF</div>
+      </div>
+      <div class="st2-screen">
+        <img src="original-dos/stonet2/2.GIF" alt="Scene 2">
+        <div class="screen-label">2.GIF</div>
+      </div>
+      <div class="st2-screen">
+        <img src="original-dos/stonet2/3.GIF" alt="Scene 3">
+        <div class="screen-label">3.GIF</div>
+      </div>
+      <div class="st2-screen">
+        <img src="original-dos/stonet2/4.GIF" alt="Scene 4">
+        <div class="screen-label">4.GIF</div>
+      </div>
+      <div class="st2-screen">
+        <img src="original-dos/stonet2/PAN1.GIF" alt="Panel 1">
+        <div class="screen-label">PAN1.GIF &mdash; UI panel</div>
+      </div>
+      <div class="st2-screen">
+        <img src="original-dos/stonet2/PAN2.GIF" alt="Panel 2">
+        <div class="screen-label">PAN2.GIF &mdash; UI panel</div>
+      </div>
+      <div class="st2-screen">
+        <img src="original-dos/stonet2/3DDESKA0.GIF" alt="3D board prototype 0">
+        <div class="screen-label">3DDESKA0.GIF &mdash; 3D prototype (1996)</div>
+      </div>
+      <div class="st2-screen">
+        <img src="original-dos/stonet2/3DDESKA1.GIF" alt="3D board prototype 1">
+        <div class="screen-label">3DDESKA1.GIF &mdash; 3D prototype (1997)</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ══════════════════════════════════════ TIMELINE ══ -->
+  <p class="section-title">— development history —</p>
+
+  <div class="timeline-section">
+    <div class="timeline">
+
+      <div class="tl-entry">
+        <div class="tl-year">1992</div>
+        <div class="tl-title">First prototype</div>
+        <div class="tl-body">
+          The earliest surviving build. An animated game sequence
+          and outro already exist, suggesting the raycaster engine
+          and basic game loop were functional by December.
+        </div>
+        <div class="tl-files">
+          <code>GAME6.FLI</code> &nbsp; <code>ANIMACE2.FLI</code> &nbsp; <code>GM_OUT.FLI</code>
+        </div>
+      </div>
+
+      <div class="tl-entry">
+        <div class="tl-year">1995</div>
+        <div class="tl-title">The Adventure — main development</div>
+        <div class="tl-body">
+          The game's definitive development year. 129 GIF87a scenes
+          painted at 320×200 form the complete dungeon artwork.
+          The story manuscript <em>STONETOW.ERS</em> is written and
+          signed <em>(c) 1995 WIZ</em>. BMP sprite sheets for
+          monsters, items, and characters are finalized.
+          <code>STONET.EXE</code> is compiled.
+        </div>
+        <div class="tl-files">
+          <code>STONET/</code> (129 GIFs) &nbsp; <code>STONETOW.ERS</code> &nbsp;
+          <code>BMP/*.BMP</code> &nbsp; <code>GM_FLI2.FLI</code>
+        </div>
+      </div>
+
+      <div class="tl-entry">
+        <div class="tl-year">1996</div>
+        <div class="tl-title">Source iterations &amp; 3D experiments</div>
+        <div class="tl-body">
+          162 Pascal source files spanning versions 73–264 document
+          active iteration of engine and game logic. The <em>lostGFX</em>
+          library for 640×480×256 VGA is written, along with an early
+          3D board prototype.
+        </div>
+        <div class="tl-files">
+          <code>PAS/*.PAS</code> &nbsp; <code>stonet2/3DDESKA0.GIF</code>
+        </div>
+      </div>
+
+      <div class="tl-entry">
+        <div class="tl-year">1997</div>
+        <div class="tl-title">Demo &amp; FX animations</div>
+        <div class="tl-body">
+          New animated effects — a crystal loop and a water sequence —
+          are produced for planned new dungeon scenes. A game demo
+          animation is recorded in March, the last known stonet1 artifact.
+        </div>
+        <div class="tl-files">
+          <code>CRYSTAL.FLI</code> &nbsp; <code>STONWAT.FLI</code> &nbsp;
+          <code>DEMO.FLI</code> &nbsp; <code>stonet2/3DDESKA1.GIF</code>
+        </div>
+      </div>
+
+      <div class="tl-entry">
+        <div class="tl-year">1998–99</div>
+        <div class="tl-title">Stone Towers II — new engine</div>
+        <div class="tl-body">
+          Development restarts from scratch. A new engine targets
+          640×480 with CEL-format sprites. Seven executable builds
+          (230X–453X) and a full set of character portraits and game
+          screens are produced. An AVI clip
+          (<code>ANIMACKA.AVI</code>, 1.6 MB) is recorded. The project
+          ends unreleased.
+        </div>
+        <div class="tl-files">
+          <code>stonet2/*.GIF</code> &nbsp; <code>stonet2/ANIMACKA.AVI</code> &nbsp;
+          <code>stonet2/*.EXE</code> (×7)
+        </div>
+      </div>
+
+      <div class="tl-entry">
+        <div class="tl-year">2025</div>
+        <div class="tl-title">Web port — published with authors' permission</div>
+        <div class="tl-body">
+          The original source code is archived on GitHub and the game
+          is ported to the browser with the assistance of Claude AI —
+          completing the gameplay that was never finished.
+        </div>
+        <div class="tl-files">
+          <code>walker.html</code> &nbsp; <code>adventure.html</code> &nbsp; <code>original.html</code>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <footer>
     <div class="footer-authors">
       original game &copy; <b>raist</b> &nbsp;·&nbsp; <b>ernie</b> &nbsp;·&nbsp; <b>dusty</b>
@@ -300,6 +1097,285 @@
       <a href="https://github.com/HugoShamrock/stone-towers" target="_blank">source on GitHub</a>
     </div>
   </footer>
+
+  <!-- ══════════════════════════════════ FLI PLAYER JS ══ -->
+  <script>
+  'use strict';
+
+  // ── FLI / FLC decoder ─────────────────────────────────────────────────────
+  // Supports magic 0xAF11 (FLI, speed in 1/70 s) and 0xAF12 (FLC, speed in ms)
+  // Chunk types: 4 COLOR, 11 LC delta, 12 BLACK, 13 BRUN, 15 COPY
+
+  class FLIPlayer {
+    constructor() {
+      this.frames = [];
+      this.delay = 100;
+      this.width = 320;
+      this.height = 200;
+      this._timer = null;
+      this._frame = 0;
+      this._canvas = null;
+      this._ctx = null;
+    }
+
+    async load(url, onProgress) {
+      const resp = await fetch(url);
+      const total = +resp.headers.get('Content-Length') || 0;
+      const reader = resp.body.getReader();
+      const chunks = [];
+      let received = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        received += value.length;
+        if (onProgress && total) onProgress(received / total);
+      }
+      if (onProgress) onProgress(1);
+      // Assemble ArrayBuffer
+      const buf = new Uint8Array(received);
+      let off = 0;
+      for (const c of chunks) { buf.set(c, off); off += c.length; }
+      this._decode(buf.buffer);
+    }
+
+    _decode(ab) {
+      const v = new DataView(ab);
+      const magic  = v.getUint16(4, true);
+      const nFrames = v.getUint16(6, true);
+      this.width   = v.getUint16(8, true);
+      this.height  = v.getUint16(10, true);
+      const speed  = v.getUint16(16, true);
+      // FLI: speed in 1/70 s ticks; FLC: speed in ms
+      this.delay = (magic === 0xAF12) ? speed : Math.round(speed * 1000 / 70);
+      if (this.delay < 1) this.delay = 50;
+
+      const W = this.width, H = this.height;
+      const pixels = new Uint8Array(W * H);
+      const pal    = new Uint8Array(768); // 256 × 3
+      const isFli  = (magic === 0xAF11);
+
+      let pos = 128; // frames begin after 128-byte file header
+      this.frames = [];
+
+      for (let f = 0; f < nFrames; f++) {
+        if (pos + 16 > ab.byteLength) break;
+        const frameSize   = v.getUint32(pos,     true);
+        const frameMagic  = v.getUint16(pos + 4, true);
+        const chunkCount  = v.getUint16(pos + 6, true);
+        let   chunkPos    = pos + 16; // 16-byte frame header
+
+        if (frameMagic === 0xF1FA) {
+          for (let c = 0; c < chunkCount; c++) {
+            if (chunkPos + 6 > ab.byteLength) break;
+            const chunkSize = v.getUint32(chunkPos,     true);
+            const chunkType = v.getUint16(chunkPos + 4, true);
+            this._chunk(v, chunkType, chunkPos + 6, pixels, pal, isFli, W, H);
+            chunkPos += chunkSize;
+          }
+        }
+
+        // Snapshot: convert indexed pixels → RGBA ImageData
+        const img = new ImageData(W, H);
+        const d   = img.data;
+        for (let i = 0; i < W * H; i++) {
+          const pi = pixels[i] * 3;
+          d[i * 4]     = pal[pi];
+          d[i * 4 + 1] = pal[pi + 1];
+          d[i * 4 + 2] = pal[pi + 2];
+          d[i * 4 + 3] = 255;
+        }
+        this.frames.push(img);
+
+        pos += frameSize;
+      }
+    }
+
+    _chunk(v, type, p, pixels, pal, isFli, W, H) {
+      if (type === 4 || type === 11) {
+        // Palette chunk:
+        //   type 11 (0x0B) FLI_COLOR_64 — used in FLI files, values 0–63 (6-bit)
+        //   type  4 (0x04) FLI_COLOR_256 — used in FLC files, values 0–255 (8-bit)
+        const is6bit = (type === 11); // FLI always uses type 11 with 6-bit values
+        const nPkts = v.getUint16(p, true); p += 2;
+        let ci = 0;
+        for (let pk = 0; pk < nPkts; pk++) {
+          ci += v.getUint8(p++);
+          let cnt = v.getUint8(p++);
+          if (cnt === 0) cnt = 256;
+          for (let i = 0; i < cnt; i++, ci++) {
+            const r = v.getUint8(p++);
+            const g = v.getUint8(p++);
+            const b = v.getUint8(p++);
+            const idx = ci * 3;
+            pal[idx]     = is6bit ? (r << 2) | (r >> 4) : r;
+            pal[idx + 1] = is6bit ? (g << 2) | (g >> 4) : g;
+            pal[idx + 2] = is6bit ? (b << 2) | (b >> 4) : b;
+          }
+        }
+      } else if (type === 12) {
+        // FLI_LC (0x0C) — line-coded delta compression
+        // First word: y_start (lines to skip), second word: line count
+        const yStart  = v.getUint16(p, true); p += 2;
+        const nLines  = v.getUint16(p, true); p += 2;
+        for (let l = 0; l < nLines; l++) {
+          const y = yStart + l;
+          const nPkts = v.getUint8(p++);
+          let x = 0;
+          for (let pk = 0; pk < nPkts; pk++) {
+            x += v.getUint8(p++); // column skip
+            const cnt = v.getInt8(p++);
+            if (cnt > 0) {
+              // cnt literal pixels
+              for (let i = 0; i < cnt; i++) pixels[y * W + x++] = v.getUint8(p++);
+            } else if (cnt < 0) {
+              // replicate one pixel -cnt times
+              const col = v.getUint8(p++);
+              for (let i = 0; i < -cnt; i++) pixels[y * W + x++] = col;
+            }
+          }
+        }
+      } else if (type === 13) {
+        // FLI_BLACK (0x0D) — clear all pixels to color index 0
+        pixels.fill(0);
+      } else if (type === 15) {
+        // FLI_BRUN (0x0F) — byte run-length encoding, one line at a time
+        for (let y = 0; y < H; y++) {
+          p++; // skip obsolete packet count byte
+          let x = 0;
+          while (x < W) {
+            const cnt = v.getInt8(p++);
+            if (cnt > 0) {
+              // replicate one color cnt times
+              const col = v.getUint8(p++);
+              for (let i = 0; i < cnt && x < W; i++) pixels[y * W + x++] = col;
+            } else if (cnt < 0) {
+              // -cnt literal pixels
+              const n = -cnt;
+              for (let i = 0; i < n && x < W; i++) pixels[y * W + x++] = v.getUint8(p++);
+            }
+          }
+        }
+      } else if (type === 16) {
+        // FLI_COPY (0x10) — raw uncompressed frame
+        for (let i = 0; i < W * H; i++) pixels[i] = v.getUint8(p + i);
+      } else if (type === 7) {
+        // FLI_DELTA (0x07) — FLC word-oriented delta (rarely encountered)
+        const nLines = v.getUint16(p, true); p += 2;
+        let y = 0;
+        for (let l = 0; l < nLines; l++) {
+          while (true) {
+            const word = v.getInt16(p, true); p += 2;
+            if (word >= 0) {
+              let x = 0;
+              for (let pk = 0; pk < word; pk++) {
+                x += v.getUint8(p++);
+                const cnt = v.getInt8(p++);
+                if (cnt > 0) {
+                  for (let i = 0; i < cnt; i++) { pixels[y * W + x++] = v.getUint8(p++); pixels[y * W + x++] = v.getUint8(p++); }
+                } else if (cnt < 0) {
+                  const w1 = v.getUint8(p++), w2 = v.getUint8(p++);
+                  for (let i = 0; i < -cnt; i++) { pixels[y * W + x++] = w1; pixels[y * W + x++] = w2; }
+                }
+              }
+              y++; break;
+            } else if ((word & 0xC000) === 0x8000) {
+              y += -(word & 0x3FFF);
+            }
+            // 0xC000 = last-pixel marker, skip
+          }
+        }
+      }
+      // Unknown chunk types are silently skipped
+    }
+
+    attach(canvas) {
+      this._canvas = canvas;
+      this._ctx    = canvas.getContext('2d');
+      canvas.width  = this.width;
+      canvas.height = this.height;
+    }
+
+    play() {
+      if (!this.frames.length || !this._ctx) return;
+      this._frame = 0;
+      this._tick();
+    }
+
+    _tick() {
+      if (!this._ctx) return;
+      this._ctx.putImageData(this.frames[this._frame], 0, 0);
+      this._frame = (this._frame + 1) % this.frames.length;
+      this._timer = setTimeout(() => this._tick(), this.delay);
+    }
+
+    pause() {
+      clearTimeout(this._timer);
+      this._timer = null;
+    }
+
+    resume() {
+      if (this._timer === null && this.frames.length) this._tick();
+    }
+
+    isPlaying() { return this._timer !== null; }
+  }
+
+  // ── Wire up each .anim-player block ──────────────────────────────────────
+  document.querySelectorAll('.anim-player').forEach(block => {
+    const src       = block.dataset.src;
+    const canvasWrap = block.querySelector('.anim-canvas-wrap');
+    const canvas    = block.querySelector('canvas');
+    const progWrap  = block.querySelector('.progress-wrap');
+    const progBar   = block.querySelector('.progress-bar');
+    const loadBtn   = block.querySelector('.load-btn');
+    const ppBtn     = block.querySelector('.play-pause-btn');
+    const status    = block.querySelector('.anim-status');
+
+    const player = new FLIPlayer();
+    let loaded = false;
+
+    loadBtn.addEventListener('click', async () => {
+      if (loaded) return;
+      loadBtn.disabled = true;
+      loadBtn.textContent = 'LOADING…';
+      progWrap.classList.add('visible');
+      status.textContent = 'fetching…';
+
+      try {
+        await player.load(src, pct => {
+          progBar.style.width = Math.round(pct * 100) + '%';
+          status.textContent = Math.round(pct * 100) + '%';
+        });
+
+        loaded = true;
+        player.attach(canvas);
+        canvasWrap.classList.add('visible');
+        progWrap.classList.remove('visible');
+        ppBtn.disabled = false;
+        ppBtn.textContent = 'PLAY';
+        loadBtn.style.display = 'none';
+        status.textContent = player.frames.length + ' frames · ' + player.delay + ' ms/f';
+      } catch (e) {
+        status.textContent = 'error: ' + e.message;
+        loadBtn.disabled = false;
+        loadBtn.textContent = 'RETRY';
+        progWrap.classList.remove('visible');
+      }
+    });
+
+    ppBtn.addEventListener('click', () => {
+      if (!loaded) return;
+      if (player.isPlaying()) {
+        player.pause();
+        ppBtn.textContent = 'PLAY';
+      } else {
+        player.resume();
+        ppBtn.textContent = 'PAUSE';
+      }
+    });
+  });
+  </script>
 
 </body>
 </html>
