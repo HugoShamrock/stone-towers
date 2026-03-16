@@ -227,7 +227,7 @@ function px(x, y, r, g, b) {
 
 // ── TITLE / CHOOSE SCREEN ────────────────────────────────────────────────────
 
-// Hover state for buttons: 0=none, 1=walker, 2=adventure
+// Hover state for buttons: 0=none, 1=walker, 2=adventure, 3=original
 let hoverBtn = 0;
 
 canvas.addEventListener('mousemove', e => {
@@ -235,9 +235,11 @@ canvas.addEventListener('mousemove', e => {
   const rect = canvas.getBoundingClientRect();
   const mx = (e.clientX - rect.left) * (W / rect.width);
   const my = (e.clientY - rect.top) * (H / rect.height);
-  const b1 = getBtnWalker(), b2 = getBtnAdventure();
-  if (mx >= b1.x && mx <= b1.x + b1.w && my >= b1.y && my <= b1.y + b1.h) hoverBtn = 1;
-  else if (mx >= b2.x && mx <= b2.x + b2.w && my >= b2.y && my <= b2.y + b2.h) hoverBtn = 2;
+  const b1 = getBtnWalker(), b2 = getBtnAdventure(), b3 = getBtnOriginal();
+  function hit(b) { return mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h; }
+  if (hit(b1)) hoverBtn = 1;
+  else if (hit(b2)) hoverBtn = 2;
+  else if (hit(b3)) hoverBtn = 3;
   else hoverBtn = 0;
   canvas.style.cursor = hoverBtn > 0 ? 'pointer' : 'crosshair';
 });
@@ -247,17 +249,17 @@ canvas.addEventListener('click', e => {
   const rect = canvas.getBoundingClientRect();
   const mx = (e.clientX - rect.left) * (W / rect.width);
   const my = (e.clientY - rect.top) * (H / rect.height);
-  const b1 = getBtnWalker(), b2 = getBtnAdventure();
-  if (mx >= b1.x && mx <= b1.x + b1.w && my >= b1.y && my <= b1.y + b1.h) {
-    gameState = 'game';
-    canvas.style.cursor = 'crosshair';
-  } else if (mx >= b2.x && mx <= b2.x + b2.w && my >= b2.y && my <= b2.y + b2.h) {
-    window.location.href = 'adventure.html';
-  }
+  const b1 = getBtnWalker(), b2 = getBtnAdventure(), b3 = getBtnOriginal();
+  function hit(b) { return mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h; }
+  if (hit(b1)) { gameState = 'game'; canvas.style.cursor = 'crosshair'; }
+  else if (hit(b2)) window.location.href = 'adventure.html';
+  else if (hit(b3)) window.location.href = 'original.html';
 });
 
-function getBtnWalker()    { return { x: W/2 - 160, y: 270, w: 140, h: 44 }; }
-function getBtnAdventure() { return { x: W/2 + 20,  y: 270, w: 140, h: 44 }; }
+// 3 buttons evenly spaced: total = 3×140 + 2×20 = 460, start x = (640-460)/2 = 90
+function getBtnWalker()    { return { x:  90, y: 270, w: 140, h: 44 }; }
+function getBtnAdventure() { return { x: 250, y: 270, w: 140, h: 44 }; }
+function getBtnOriginal()  { return { x: 410, y: 270, w: 140, h: 44 }; }
 
 function drawMenuButton(label, btn, hover, t) {
   const flash = hover ? (0.85 + Math.sin(t * 8) * 0.15) : 1.0;
@@ -302,9 +304,10 @@ function renderTitle() {
   ctx.fillText('— Choose your game —', W / 2, 262);
 
   // Buttons
-  const b1 = getBtnWalker(), b2 = getBtnAdventure();
-  drawMenuButton('[ Dungeon Walker ]', b1, hoverBtn === 1, t);
-  drawMenuButton('[ The Adventure ]',  b2, hoverBtn === 2, t);
+  const b1 = getBtnWalker(), b2 = getBtnAdventure(), b3 = getBtnOriginal();
+  drawMenuButton('[ Dungeon Walker ]',    b1, hoverBtn === 1, t);
+  drawMenuButton('[ The Adventure ]',     b2, hoverBtn === 2, t);
+  drawMenuButton('[ Original Graphics ]', b3, hoverBtn === 3, t);
 
   // Authors
   ctx.fillStyle = '#333';

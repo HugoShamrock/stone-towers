@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stone Towers – Original Graphics</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a0a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Courier New', monospace;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    canvas { display: block; cursor: default; image-rendering: pixelated; }
+    #hint {
+      margin-top: 8px;
+      font-size: 10px;
+      color: #333;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+    #hint span { color: #555; }
+  </style>
+</head>
+<body>
+  <canvas id="c" width="640" height="400"></canvas>
+  <div id="hint">
+    <span>Arrows/WASD</span> move &nbsp; <span>1-5</span> spells &nbsp; <span>click</span> interact &nbsp; <span>Enter</span> confirm
+  </div>
+
+  <script>
+'use strict';
+
+// ── CANVAS SETUP ─────────────────────────────────────────────────────────────
+
+const W = 640, H = 400, S = 2;   // S = scale factor: 320×200 → 640×400
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+canvas.setAttribute('tabindex', '0');
+canvas.focus();
+canvas.addEventListener('click', () => canvas.focus());
+
+// ── GIF LOADER ───────────────────────────────────────────────────────────────
+// All GIFs are 320×200. When drawn at original position (ox, oy), we call:
+//   ctx.drawImage(processedCanvas, 0,0,320,200, ox*S, oy*S, 640, 400)
+// Color index 0 (pure black) treated as transparent — standard DOS convention.
+
+const GIF_BASE = 'original-dos/stonet1/STONET/';
+
+const GIF_IDS = [
+  '11511','11512','11521','11531','11541',
+  '11611','11621','11631','11632','11633','11641',
+  '12511','12521','12522','12523','12524','12525','12526','12527','12528','12531','12541',
+  '13511','13521','13531','13541','13542',
+  '14111','14112','14113','14121','14131','14141',
+  '14211','14221','14231','14241',
+  '14311','14312','14313','14314','14315','14316','14317','14321','14331','14341',
+  '14411','14421','14431','14432','14441',
+  '14511','14521','14522','14523','14524','14525','14526','14527','14528','14531','14541',
+  '14611','14612','14621','14631','14641',
+  '15411','15421','15431','15441',
+  '15611','15621','15631','15641',
+  '15711','15721','15731','15732','15733','15734','15735','15736','15737','15738','15741',
+  '16411','16412','16413','16414','16415','16416','16417','16418','16419','16421','16431','16441',
+  '16511','16521','16531','16541',
+  '16611','16621','16622','16631','16641',
+  '50000','50001','50002','50003','50004','50005','50006','50007','50008','50009','50010','50011',
+  '51001','52001',
+  '53001','53002','53003','53004','53005','53006','53007'
+];
+
+const bitmaps = {};       // id → pre-processed canvas (black → transparent)
+let loadedCount = 0;
+let loadState = 'loading';
+
+function processGif(img) {
+  const c = document.createElement('canvas');
+  c.width = 320; c.height = 200;
+  const cx = c.getContext('2d');
+  cx.drawImage(img, 0, 0);
+  const id = cx.getImageData(0, 0, 320, 200);
+  const d = id.data;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i] === 0 && d[i+1] === 0 && d[i+2] === 0) d[i+3] = 0;
+  }
+  cx.putImageData(id, 0, 0);
+  return c;
+}
+
+(function loadGifs() {
+  GIF_IDS.forEach(id => {
+    const img = new Image();
+    img.onload = () => {
+      bitmaps[id] = processGif(img);
+      loadedCount++;
+      if (loadedCount === GIF_IDS.length) loadState = 'ready';
+    };
+    img.onerror = () => {
+      loadedCount++;
+      if (loadedCount === GIF_IDS.length) loadState = 'ready';
+    };
+    img.src = GIF_BASE + id + '.GIF';
+  });
+})();
+
+// Draw a pre-processed GIF at original position (ox, oy) with 2× scale.
+// The 320×200 image is placed so its top-left is at canvas (ox*2, oy*2),
+// scaled to 640×400 — canvas automatically clips overflow.
+function drawGif(id, ox, oy) {
+  const c = bitmaps[id];
+  if (!c) return;
+  ctx.drawImage(c, 0, 0, 320, 200, ox * S, oy * S, W, H);
+}
+
+// ── GAME STATE ───────────────────────────────────────────────────────────────
+
+let gameState = 'title';   // 'loading' | 'title' | 'game' | 'gameover' | 'win'
+
+let x8, y8, z8;
+let mana, hp, dia = 0;
+let batoh;
+let l1;
+let message = '';
+let messageTimer = 0;
+let tick = 0;
+let selectedSlot = -1;
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+
+function initGame() {
+  x8 = 1; y8 = 6; z8 = 1;
+  mana = 1; hp = 4; dia = 0;
+  batoh = [1, 0, 0, 0, 0, 0];
+  selectedSlot = -1;
+
+  l1 = [];
+  for (let x = 0; x <= 9; x++) {
+    l1[x] = [];
+    for (let y = 0; y <= 9; y++) l1[x][y] = [0,0,0,0,0];
+  }
+
+  const rooms = [
+    [1,5],[1,6],[2,5],[3,5],
+    [4,1],[4,2],[4,3],[4,4],[4,5],[4,6],
+    [5,6],[5,7],
+    [6,4],[6,5],[6,6]
+  ];
+  for (const [rx,ry] of rooms) for (let z=1;z<=4;z++) l1[rx][ry][z] = 1;
+
+  l1[1][6][3] = 2;     // firepit: has torch
+  l1[2][5][2] = 4;     // bat: alive
+  for (let z=1;z<=4;z++) l1[3][5][z] = 0;  // bat blocks (3,5)
+  l1[4][3][1] = 6;     // wolf: alive
+  for (let z=1;z<=4;z++) l1[4][2][z] = 0;  // wolf blocks (4,2)
+
+  showMsg('You stand at the edge of the dungeon...');
+}
+
+// ── MOVEMENT ─────────────────────────────────────────────────────────────────
+
+function tryMove(action) {
+  if (action === 'turnLeft') { z8 = z8===1?4:z8-1; return; }
+  if (action === 'turnRight') { z8 = z8===4?1:z8+1; return; }
+  const fwd = {1:{dx:0,dy:-1},2:{dx:1,dy:0},3:{dx:0,dy:1},4:{dx:-1,dy:0}};
+  const bk  = {1:{dx:0,dy:1},2:{dx:-1,dy:0},3:{dx:0,dy:-1},4:{dx:1,dy:0}};
+  const sl  = {1:{dx:-1,dy:0},2:{dx:0,dy:-1},3:{dx:1,dy:0},4:{dx:0,dy:1}};
+  const sr  = {1:{dx:1,dy:0},2:{dx:0,dy:1},3:{dx:-1,dy:0},4:{dx:0,dy:-1}};
+  let d;
+  if (action==='forward')     d=fwd[z8];
+  else if (action==='back')   d=bk[z8];
+  else if (action==='strafeLeft')  d=sl[z8];
+  else if (action==='strafeRight') d=sr[z8];
+  else return;
+  const nx=x8+d.dx, ny=y8+d.dy;
+  if (nx<1||nx>9||ny<1||ny>9) { showMsg("You can't go that way."); return; }
+  if (l1[nx][ny][z8]<=0) { showMsg("The way is blocked."); return; }
+  x8=nx; y8=ny;
+  onEnterRoom();
+}
+
+function onEnterRoom() {
+  if (x8===2&&y8===5&&l1[2][5][2]===4) {
+    showMsg("A bat swoops at you! (-1 HP)");
+    hp=Math.max(0,hp-1);
+    if (hp<=0) { gameState='gameover'; return; }
+  }
+  if (x8===4&&y8===3&&l1[4][3][1]===6) {
+    showMsg("The wolf lunges at you! (-1 HP)");
+    hp=Math.max(0,hp-1);
+    if (hp<=0) { gameState='gameover'; return; }
+  }
+  if (x8===6&&y8===4&&l1[6][4][1]===1) {
+    showMsg("The goblin slashes at you! (-1 HP)");
+    hp=Math.max(0,hp-1);
+    if (hp<=0) { gameState='gameover'; return; }
+  }
+}
+
+// ── ITEMS & INVENTORY ─────────────────────────────────────────────────────────
+
+const ITEM_NAMES = ['','Red Apple','Gold Coin','Scroll','Dead Bat','Old Key','Magic Cross','Burning Torch'];
+
+function addItem(id) {
+  for (let i=0;i<6;i++) { if (batoh[i]===0) { batoh[i]=id; return true; } }
+  showMsg("Your pack is full!"); return false;
+}
+function removeItem(id) {
+  for (let i=0;i<6;i++) { if (batoh[i]===id) { batoh[i]=0; return true; } }
+  return false;
+}
+function hasItem(id) { return batoh.includes(id); }
+
+// ── INTERACTION ───────────────────────────────────────────────────────────────
+
+function showMsg(txt) { message=txt; messageTimer=240; }
+
+function interact() {
+  const cx=x8, cy=y8, cz=z8;
+  const state=l1[cx][cy][cz];
+
+  if (cx===1&&cy===5&&cz===1) {
+    if (state===1) { showMsg("You search the skeleton — Gold Coin and a Scroll!"); addItem(2); addItem(3); l1[1][5][1]=9; }
+    else showMsg("The skeleton has been looted.");
+    return;
+  }
+  if (cx===1&&cy===6&&cz===3) {
+    if (state===2) { showMsg("You grab a torch from the firepit."); addItem(7); l1[1][6][3]=9; }
+    else if (state===9) showMsg("The firepit is cold and empty.");
+    else showMsg("A firepit crackles in the corner.");
+    return;
+  }
+  if (cx===2&&cy===5&&cz===2) {
+    if (state===4) showMsg("The bat screeches! Use a spell to defeat it.");
+    else if (state===9) { if (!hasItem(4)) { addItem(4); showMsg("You pick up the dead bat."); } else showMsg("Dead bat lies here."); }
+    return;
+  }
+  if (cx===4&&cy===5&&cz===2) {
+    if (state===1) {
+      showMsg("A magpie clutches a key. It wants something shiny...");
+      if (hasItem(2)) { showMsg("You offer the Gold Coin. The magpie drops the key!"); removeItem(2); l1[4][5][2]=4; }
+    } else if (state===4) { showMsg("You pick up the Old Key."); addItem(5); l1[4][5][2]=9; }
+    else showMsg("The magpie watches you.");
+    return;
+  }
+  if (cx===4&&cy===3&&cz===1) {
+    if (state===6) showMsg("A wolf growls at you. Use Magic Cross or Move spell!");
+    else showMsg("The wolf is gone.");
+    return;
+  }
+  if (cx===5&&cy===7&&cz===3) {
+    if (state===1) {
+      showMsg("A druid rasps: 'Bring me a dead bat.'");
+      if (hasItem(4)) { showMsg("You offer the Dead Bat. The druid gives you a Magic Cross!"); removeItem(4); addItem(6); l1[5][7][3]=9; }
+    } else showMsg("The druid meditates in silence.");
+    return;
+  }
+  if (cx===6&&cy===6&&cz===2) {
+    if (state===1) { showMsg("You drink from the magical well. (+1 mana)"); mana=Math.min(5,mana+1); l1[6][6][2]=2; }
+    else showMsg("The well is dry.");
+    return;
+  }
+  if (cx===6&&cy===4&&cz===1) {
+    if (state===1) showMsg("A goblin blocks your path! Use Move spell (2 mana).");
+    else if (state===8) { dia=1; l1[6][4][1]=9; showMsg("You take the sparkling diamond!"); }
+    else showMsg("The goblin is gone.");
+    return;
+  }
+  if (cx===4&&cy===1&&cz===1) {
+    if (state===1) {
+      if (hasItem(5)) { showMsg("You use the Old Key. The lock clicks!"); removeItem(5); l1[4][1][1]=2; }
+      else showMsg("A locked door. You need a key.");
+    } else if (state===2) {
+      if (hasItem(7)) { showMsg("Your torch lights the way. The door opens!"); removeItem(7); l1[4][1][1]=3; }
+      else showMsg("The door is unlocked but pitch dark. You need a torch.");
+    } else if (state===3) {
+      if (dia===1) { showMsg("You step through... YOU WIN!"); gameState='win'; }
+      else showMsg("The door is open, but you feel you're missing something precious...");
+    }
+    return;
+  }
+  if (selectedSlot>=0 && batoh[selectedSlot]===3) {
+    showMsg("'Beware the wolf and goblin. Fire defeats darkness. A key unlocks fate.'");
+    return;
+  }
+  showMsg("Nothing notable here.");
+}
+
+function useItem(slot) {
+  const item=batoh[slot];
+  if (item===0) return;
+  const cx=x8, cy=y8, cz=z8;
+  if (item===1) {
+    if (hp>=5) { showMsg("Already at full health."); return; }
+    hp=Math.min(5,hp+1); batoh[slot]=0; showMsg("You eat the apple. (+1 HP)"); return;
+  }
+  if (item===3) { showMsg("Scroll: 'Beware the wolf and goblin. Fire defeats darkness. A key unlocks fate.'"); return; }
+  if (item===6) {
+    if (cx===4&&cy===3&&l1[4][3][1]===6) {
+      showMsg("You brandish the Magic Cross! The wolf howls and flees!");
+      l1[4][3][1]=8; for (let z=1;z<=4;z++) l1[4][2][z]=1; batoh[slot]=0; selectedSlot=-1; return;
+    }
+    showMsg("The Magic Cross glows faintly but nothing happens here."); return;
+  }
+  if (item===2) {
+    if (cx===4&&cy===5&&cz===2&&l1[4][5][2]===1) {
+      showMsg("You offer the Gold Coin. The magpie drops the key!"); batoh[slot]=0; l1[4][5][2]=4; selectedSlot=-1; return;
+    }
+    showMsg("The coin serves no purpose here."); return;
+  }
+  if (item===4) {
+    if (cx===5&&cy===7&&cz===3&&l1[5][7][3]===1) {
+      showMsg("You offer the Dead Bat. The druid gives you a Magic Cross!"); batoh[slot]=0; addItem(6); l1[5][7][3]=9; selectedSlot=-1; return;
+    }
+    showMsg("The dead bat is not useful here."); return;
+  }
+  if (item===5) {
+    if (cx===4&&cy===1&&cz===1&&l1[4][1][1]===1) {
+      showMsg("You use the Old Key. The lock clicks!"); batoh[slot]=0; l1[4][1][1]=2; selectedSlot=-1; return;
+    }
+    showMsg("The key fits nothing here."); return;
+  }
+  if (item===7) {
+    if (cx===4&&cy===1&&cz===1&&l1[4][1][1]===2) {
+      showMsg("Your torch lights the way. The door opens!"); batoh[slot]=0; l1[4][1][1]=3; selectedSlot=-1; return;
+    }
+    showMsg("The torch lights your path."); return;
+  }
+  showMsg("You can't use that here.");
+}
+
+// ── SPELLS ────────────────────────────────────────────────────────────────────
+
+const SPELL_COST = [0,1,1,1,2,2];
+
+function castSpell(sp) {
+  const cost=SPELL_COST[sp];
+  if (mana<cost) { showMsg(`Not enough mana! Need ${cost}.`); return; }
+  const cx=x8, cy=y8;
+  if (sp===1) {
+    if (cx===2&&cy===5&&l1[2][5][2]===4) {
+      mana-=cost; showMsg("Fire! The bat bursts into flames and falls dead.");
+      l1[2][5][2]=9; for (let z=1;z<=4;z++) l1[3][5][z]=1; return;
+    }
+    showMsg("Fire spell fizzles — nothing to burn here."); return;
+  }
+  if (sp===2) { mana-=cost; showMsg("Freeze! The air turns cold... but nothing is frozen."); return; }
+  if (sp===3) { mana-=cost; showMsg("Flash! A blinding light fills the room."); return; }
+  if (sp===4) {
+    if (cx===4&&cy===3&&l1[4][3][1]===6) { mana-=cost; showMsg("Death spell! The wolf collapses!"); l1[4][3][1]=8; for (let z=1;z<=4;z++) l1[4][2][z]=1; return; }
+    if (cx===2&&cy===5&&l1[2][5][2]===4) { mana-=cost; showMsg("Death spell! The bat drops dead."); l1[2][5][2]=9; for (let z=1;z<=4;z++) l1[3][5][z]=1; return; }
+    mana-=cost; showMsg("Death spell! ...nothing dies here."); return;
+  }
+  if (sp===5) {
+    if (cx===6&&cy===4&&l1[6][4][1]===1) { mana-=cost; showMsg("Move spell! The goblin flies across the room. A diamond appears!"); l1[6][4][1]=8; return; }
+    if (cx===4&&cy===3&&l1[4][3][1]===6) { mana-=cost; showMsg("Move spell! The wolf is flung aside!"); l1[4][3][1]=8; for (let z=1;z<=4;z++) l1[4][2][z]=1; return; }
+    showMsg("Move spell — nothing to move here."); return;
+  }
+}
+
+// ── RENDERING ────────────────────────────────────────────────────────────────
+
+function renderLoading() {
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#3a3020';
+  ctx.font = '14px Courier New';
+  ctx.textAlign = 'center';
+  ctx.fillText('Loading original 1995 graphics...', W/2, H/2 - 24);
+  const pct = loadedCount / GIF_IDS.length;
+  ctx.fillStyle = '#1a1208';
+  ctx.fillRect(W/2 - 160, H/2, 320, 18);
+  ctx.fillStyle = '#a07830';
+  ctx.fillRect(W/2 - 160, H/2, 320 * pct, 18);
+  ctx.strokeStyle = '#3a2808';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(W/2 - 160, H/2, 320, 18);
+  ctx.fillStyle = '#666';
+  ctx.font = '10px Courier New';
+  ctx.fillText(`${loadedCount} / ${GIF_IDS.length}`, W/2, H/2 + 36);
+}
+
+function renderTitle() {
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+  drawGif('50011', 0, 0);
+  // Blink prompt
+  const blink = Math.floor(tick / 28) % 2 === 0;
+  if (blink) {
+    ctx.fillStyle = 'rgba(255,220,80,0.92)';
+    ctx.font = 'bold 14px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText('— Press ENTER or click to begin —', W/2, H - 22);
+  }
+}
+
+function renderGameOver() {
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+  drawGif('50010', 0, 0);
+  const blink = Math.floor(tick / 28) % 2 === 0;
+  if (blink) {
+    ctx.fillStyle = 'rgba(200,60,60,0.92)';
+    ctx.font = 'bold 14px Courier New';
+    ctx.textAlign = 'center';
+    ctx.fillText('Press ENTER or click to try again', W/2, H - 22);
+  }
+}
+
+function renderWin() {
+  // Show game screen dimmed, then victory overlay
+  renderGame();
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#ffd040';
+  ctx.font = 'bold 56px Courier New';
+  ctx.textAlign = 'center';
+  ctx.shadowColor = '#ffd040';
+  ctx.shadowBlur = 20;
+  ctx.fillText('VICTORY!', W/2, 155);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#c0a030';
+  ctx.font = '18px Courier New';
+  ctx.fillText('You escaped the Stone Towers!', W/2, 215);
+  ctx.fillStyle = '#888';
+  ctx.font = '12px Courier New';
+  ctx.fillText('original game by  raist · ernie · dusty', W/2, 260);
+  const blink = Math.floor(tick / 28) % 2 === 0;
+  if (blink) {
+    ctx.fillStyle = '#aaa';
+    ctx.font = '13px Courier New';
+    ctx.fillText('Press ENTER or click to play again', W/2, 300);
+  }
+}
+
+function renderGame() {
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+
+  // ── Layer 1: base UI frame (STONET.PAS: gifshow('50000',0,0))
+  drawGif('50000', 0, 0);
+
+  // ── Layer 2: panel decorations (gifshow('51001',2,5) ; gifshow('52001',2,52))
+  drawGif('51001', 2, 5);
+  drawGif('52001', 2, 52);
+
+  // ── Layer 3: room scene at (59,4)
+  drawRoomScene();
+
+  // ── Layer 4: HP / MP bars  (gifshow('50004',3,81) / ('50004',3,109))
+  drawStats();
+
+  // ── Layer 5: inventory items
+  drawInventory();
+
+  // ── Layer 6: minimap (originally drawn with line() calls)
+  drawMinimap();
+
+  // ── Layer 7: message overlay
+  drawMsg();
+}
+
+function drawRoomScene() {
+  const cx=x8, cy=y8, cz=z8;
+  const state=l1[cx][cy][cz];
+  const af = Math.floor(tick / 8); // animation frame index
+
+  // Build base GIF id.
+  // Many rooms: creature is drawn as a separate overlay on top of the
+  // base corridor (state=1). Mirror STONET.PAS c5 override rules.
+  let c5 = state.toString();
+  if (cx===1&&cy===6&&cz===3&&(state===2||state===9))    c5='1'; // firepit
+  if (cx===2&&cy===5&&cz===2&&(state>=4&&state<=9))       c5='1'; // bat
+  if (cx===4&&cy===5&&cz===2&&(state===4||state===8))     c5='1'; // magpie
+  if (cx===5&&cy===7&&cz===3&&(state===2||state===9))     c5='1'; // druid
+  if (cx===6&&cy===6&&cz===2&&state===2)                  c5='1'; // well
+  if (cx===4&&cy===3&&cz===1&&(state===6||state===8))     c5='1'; // wolf
+
+  const roomId = `1${cx}${cy}${cz}${c5}`;
+  if (bitmaps[roomId]) {
+    drawGif(roomId, 59, 4);
+  } else {
+    const fallback = `1${cx}${cy}${cz}1`;
+    if (bitmaps[fallback]) drawGif(fallback, 59, 4);
+  }
+
+  // Creature / object overlays drawn at their specific (ox, oy) positions
+  // ── Fire at (1,6,3) ──
+  if (cx===1&&cy===6&&cz===3&&state===2) {
+    drawGif(af%2===0?'11632':'11633', 119, 101);
+  }
+
+  // ── Bat at (2,5,2) ──
+  if (cx===2&&cy===5&&cz===2) {
+    if (state===4) {
+      // Cycle frames 12524→12525→12526 (bat animation)
+      drawGif(['12524','12525','12526'][af%3], 84, 39);
+    } else if (state===9) {
+      drawGif('12528', 112, 117);  // dead bat on ground
+    }
+  }
+
+  // ── Magpie at (4,5,2) ──
+  if (cx===4&&cy===5&&cz===2) {
+    if (state===1) drawGif('14522', 128, 23);      // magpie with key
+    else if (state===4) drawGif('14525', 128, 15); // key on ground
+  }
+
+  // ── Wolf at (4,3,1) ──
+  if (cx===4&&cy===3&&cz===1&&state===6) {
+    drawGif(['14315','14316','14317'][af%3], 119, 39);
+  }
+
+  // ── Druid at (5,7,3) ──
+  if (cx===5&&cy===7&&cz===3&&state===1) {
+    const pairs=[['15732','15735'],['15733','15736'],['15734','15737']];
+    const [a,b] = pairs[af%3];
+    drawGif(a, 221, 5);
+    drawGif(b, 168, 73);
+  }
+
+  // ── Goblin at (6,4,1) ──
+  if (cx===6&&cy===4&&cz===1&&state===1) {
+    drawGif(af%2===0?'16411':'16412', 60, 75);
+  }
+}
+
+function drawStats() {
+  // HP bar label + pips  (STONET.PAS: 50004 at (3,81); 50005 at (1+7*f, 83))
+  drawGif('50004', 3, 81);
+  for (let f=1; f<=hp; f++) drawGif('50005', 1+7*f, 83);
+  // MP bar label + pips  (50004 at (3,109); 50006 at (1+7*f, 111))
+  drawGif('50004', 3, 109);
+  for (let f=1; f<=mana; f++) drawGif('50006', 1+7*f, 111);
+}
+
+function drawInventory() {
+  // STONET.PAS: x7 = 72+29*f-29 = 43+29*f (f=1..6), y7 = 166
+  // viewport: x7+1, 167 → x7+28, 192  (28×26 px per slot)
+  for (let f=1; f<=6; f++) {
+    const item = batoh[f-1];
+    const ox = 43 + 29*f;   // f=1→72, f=2→101, ... f=6→217
+    const oy = 166;
+    // Clip to slot viewport
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect((ox+1)*S, 167*S, 27*S, 25*S);
+    ctx.clip();
+    if (item > 0) drawGif('5300' + item, ox, oy);
+    ctx.restore();
+    // Highlight selected slot
+    if (f-1 === selectedSlot) {
+      ctx.strokeStyle = '#ffd040';
+      ctx.lineWidth = 2;
+      ctx.strokeRect((ox+1)*S, 167*S, 27*S, 25*S);
+    }
+  }
+}
+
+function drawMinimap() {
+  // STONET.PAS: line at (258+x8*5, 140+y8*5) → 5×5 block per room
+  // In canvas (×2): block at ((258+gx*5)*2, (140+gy*5)*2) with size 8×8
+  const OX=258, OY=140, CS=5;
+  for (let gx=1; gx<=9; gx++) {
+    for (let gy=1; gy<=9; gy++) {
+      let vis=false;
+      for (let z=1;z<=4;z++) { if (l1[gx][gy][z]>0) { vis=true; break; } }
+      if (vis) {
+        ctx.fillStyle='#3a2a18';
+        ctx.fillRect((OX+gx*CS)*S,(OY+gy*CS)*S,(CS-1)*S,(CS-1)*S);
+      }
+    }
+  }
+  // Player position (bright)
+  ctx.fillStyle='#ffd040';
+  ctx.fillRect((OX+x8*CS)*S,(OY+y8*CS)*S,CS*S,CS*S);
+  // Direction indicator
+  const da={1:[0,-1],2:[1,0],3:[0,1],4:[-1,0]}[z8];
+  ctx.fillStyle='rgba(255,208,64,0.5)';
+  ctx.fillRect((OX+x8*CS+da[0]*CS)*S,(OY+y8*CS+da[1]*CS)*S,CS*S,CS*S);
+}
+
+function drawMsg() {
+  if (messageTimer<=0) return;
+  const alpha = Math.min(1, messageTimer/30);
+  // Display below scene, y≈135 original = y=270 canvas
+  const bx=120, by=270, bw=392, bh=46;
+  ctx.fillStyle=`rgba(0,0,0,0.82)`;
+  ctx.fillRect(bx,by,bw,bh);
+  ctx.strokeStyle=`rgba(80,60,20,0.6)`;
+  ctx.lineWidth=1;
+  ctx.strokeRect(bx,by,bw,bh);
+  ctx.fillStyle=`rgba(220,190,100,${alpha})`;
+  ctx.font='12px Courier New';
+  ctx.textAlign='left';
+  const maxW=380;
+  const words=message.split(' ');
+  let line='', lines=[];
+  for (const w of words) {
+    const test=line?line+' '+w:w;
+    if (ctx.measureText(test).width>maxW&&line) { lines.push(line); line=w; } else line=test;
+  }
+  if (line) lines.push(line);
+  lines.slice(0,2).forEach((l,i)=>ctx.fillText(l,bx+4,by+16+i*16));
+}
+
+// ── SPELL BUTTON AREAS (right panel in 50000.GIF, x>260 original = x>520 canvas)
+// y ranges from STONET.PAS click handler (×2 for canvas):
+const SPELL_AREAS = [
+  { y0: 29*S, y1: 40*S, sp: 1 },
+  { y0: 42*S, y1: 53*S, sp: 2 },
+  { y0: 55*S, y1: 66*S, sp: 3 },
+  { y0: 68*S, y1: 79*S, sp: 4 },
+  { y0: 80*S, y1: 91*S, sp: 5 },
+];
+
+// ── INPUT ─────────────────────────────────────────────────────────────────────
+
+canvas.addEventListener('click', e => {
+  const rect=canvas.getBoundingClientRect();
+  const mx=(e.clientX-rect.left)*(W/rect.width);
+  const my=(e.clientY-rect.top)*(H/rect.height);
+  handleClick(mx,my);
+});
+
+document.addEventListener('keydown', e => {
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+
+  if (loadState!=='ready') return;
+
+  if (gameState==='title'&&e.code==='Enter') { initGame(); gameState='game'; return; }
+  if ((gameState==='gameover'||gameState==='win')&&e.code==='Enter') { initGame(); gameState='game'; return; }
+  if (gameState!=='game') return;
+
+  if (e.code==='ArrowUp'   ||e.code==='KeyW') tryMove('forward');
+  if (e.code==='ArrowDown' ||e.code==='KeyS') tryMove('back');
+  if (e.code==='ArrowLeft' ||e.code==='KeyA') tryMove('turnLeft');
+  if (e.code==='ArrowRight'||e.code==='KeyD') tryMove('turnRight');
+  if (e.code==='KeyQ') tryMove('strafeLeft');
+  if (e.code==='KeyE') tryMove('strafeRight');
+  for (let i=1;i<=5;i++) { if (e.code===`Digit${i}`) castSpell(i); }
+  if (e.code==='Enter') interact();
+});
+
+function handleClick(mx,my) {
+  if (loadState!=='ready') return;
+  if (gameState==='title') { initGame(); gameState='game'; return; }
+  if (gameState==='gameover'||gameState==='win') { initGame(); gameState='game'; return; }
+  if (gameState!=='game') return;
+
+  // Spell area (right panel: mx > 520)
+  if (mx>520) {
+    for (const sa of SPELL_AREAS) {
+      if (my>=sa.y0&&my<=sa.y1) { castSpell(sa.sp); return; }
+    }
+  }
+
+  // Inventory slots (y=167..192 original = 334..384 canvas)
+  if (my>=334&&my<=384) {
+    for (let f=1;f<=6;f++) {
+      const ox=(43+29*f)*S;
+      if (mx>=(ox+1*S)&&mx<=(ox+28*S)) {
+        if (selectedSlot===f-1) { useItem(f-1); selectedSlot=-1; }
+        else {
+          selectedSlot=f-1;
+          if (batoh[f-1]>0) showMsg(`Selected: ${ITEM_NAMES[batoh[f-1]]}. Click again to use.`);
+        }
+        return;
+      }
+    }
+  }
+
+  // Scene area (roughly canvas 118..638, 8..268) → interact
+  if (mx>=118&&mx<=638&&my>=8&&my<=268) { interact(); return; }
+}
+
+// ── MAIN LOOP ─────────────────────────────────────────────────────────────────
+
+function loop() {
+  tick++;
+  if (messageTimer>0) messageTimer--;
+
+  if (loadState==='loading') {
+    renderLoading();
+  } else if (gameState==='title') {
+    renderTitle();
+  } else if (gameState==='game') {
+    renderGame();
+  } else if (gameState==='gameover') {
+    renderGame();
+    renderGameOver();
+  } else if (gameState==='win') {
+    renderWin();
+  }
+
+  requestAnimationFrame(loop);
+}
+
+requestAnimationFrame(loop);
+
+  </script>
+</body>
+</html>
