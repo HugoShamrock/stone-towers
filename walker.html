@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stone Towers – Dungeon Walker</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a0a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Courier New', monospace;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    canvas { display: block; cursor: crosshair; image-rendering: pixelated; }
+    #hint {
+      margin-top: 10px;
+      font-size: 11px;
+      color: #444;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+    #hint span { color: #666; }
+    #back {
+      margin-top: 10px;
+      font-size: 10px;
+      color: #3a2810;
+      letter-spacing: 1px;
+    }
+    #back a { color: #5a3e18; text-decoration: none; }
+    #back a:hover { color: #a07030; }
+  </style>
+</head>
+<body>
+  <canvas id="c" width="640" height="400"></canvas>
+  <div id="hint">
+    <span>W/↑</span> forward &nbsp;
+    <span>S/↓</span> back &nbsp;
+    <span>A/←</span> turn left &nbsp;
+    <span>D/→</span> turn right &nbsp;
+    <span>Q/E</span> strafe &nbsp;
+    <span>M</span> minimap
+  </div>
+  <div id="back"><a href="index.html">← back to menu</a></div>
+
+  <script>
+'use strict';
+
+// ── CONSTANTS ────────────────────────────────────────────────────────────────
+
+const W = 640, H = 400;
+const MSIZE = 20;
+const TEX   = 64;
+const FOG   = 9;
+
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+
+// ── MAP ──────────────────────────────────────────────────────────────────────
+// Original mapa1 from ENGINE.PAS (0=floor, 1=wall)
+
+const MAP = [
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+  [0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0],
+  [0,1,0,1,0,1,0,1,1,1,1,1,0,1,1,0,1,0,1,0],
+  [0,1,0,1,0,1,0,1,0,1,0,1,0,1,1,0,1,0,1,0],
+  [0,1,0,1,0,1,0,1,0,0,0,1,0,0,0,0,1,0,1,0],
+  [0,1,0,1,1,1,0,1,1,0,1,1,1,1,1,1,1,0,1,0],
+  [0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0],
+  [0,1,1,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,1,0],
+  [0,1,0,0,0,1,0,0,0,1,0,0,1,1,1,1,1,1,1,0],
+  [0,1,0,0,0,1,1,1,0,1,0,0,1,0,0,0,0,0,1,0],
+  [0,1,0,1,1,1,0,1,0,1,1,1,1,0,1,1,1,0,1,0],
+  [0,1,0,0,0,1,0,1,0,0,0,0,0,1,0,0,1,0,1,0],
+  [0,1,0,1,0,1,0,1,0,0,0,0,0,1,0,1,1,0,1,0],
+  [0,1,1,1,0,1,1,1,0,0,1,0,0,1,0,0,0,0,1,0],
+  [0,1,0,0,0,0,0,1,0,1,1,1,0,1,1,1,1,0,1,0],
+  [0,1,0,1,0,1,0,1,0,0,1,0,0,0,0,1,0,0,1,0],
+  [0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,1,0],
+  [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+];
+
+// ── PROCEDURAL TEXTURES ──────────────────────────────────────────────────────
+
+const textures = {};
+
+function hash(x, y) {
+  let v = (Math.imul(x, 1610612741) + Math.imul(y, 805306457)) | 0;
+  v ^= v >>> 17; v = Math.imul(v, 0x9e3779b9 | 0); v ^= v >>> 13;
+  return (v >>> 0) & 0xff;
+}
+
+function makeStoneTex(r0, g0, b0) {
+  const d = new Uint8ClampedArray(TEX * TEX * 4);
+  const BH = 16, BW = 32;
+  for (let ty = 0; ty < TEX; ty++) {
+    for (let tx = 0; tx < TEX; tx++) {
+      const row  = (ty / BH) | 0;
+      const bx   = (tx + (row & 1) * 16) % BW;
+      const by   = ty % BH;
+      const mortar = bx <= 1 || by <= 1;
+      const i = (ty * TEX + tx) * 4;
+      if (mortar) {
+        const n = hash(tx * 3, ty * 3) >> 3;
+        d[i]   = ((r0 * 0.35) | 0) + n;
+        d[i+1] = ((g0 * 0.35) | 0) + n;
+        d[i+2] = ((b0 * 0.35) | 0) + n;
+      } else {
+        const coarse = hash((tx >> 2) << 2, (ty >> 2) << 2) >> 1;
+        const fine   = hash(tx, ty) >> 4;
+        const v = coarse + fine;
+        d[i]   = Math.min(255, r0 + v);
+        d[i+1] = Math.min(255, g0 + v);
+        d[i+2] = Math.min(255, b0 + v);
+      }
+      d[i+3] = 255;
+    }
+  }
+  return d;
+}
+
+textures[1] = makeStoneTex(90, 88, 82);
+textures[2] = makeStoneTex(80, 58, 32);
+textures[3] = makeStoneTex(100, 28, 18);
+
+// ── PLAYER ───────────────────────────────────────────────────────────────────
+
+const player = {
+  x: 4.5, y: 17.5,
+  dirX: 0, dirY: -1,
+  planeX: 0.66, planeY: 0,
+};
+
+// ── INPUT ─────────────────────────────────────────────────────────────────────
+
+const keys = {};
+let showMap   = false;
+let gameState = 'title';
+
+canvas.setAttribute('tabindex', '0');
+canvas.focus();
+canvas.addEventListener('click', () => {
+  canvas.focus();
+  if (gameState === 'title') gameState = 'game';
+});
+
+document.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code === 'KeyM') showMap = !showMap;
+  if ((e.code === 'Enter' || e.code === 'Space') && gameState === 'title')
+    gameState = 'game';
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))
+    e.preventDefault();
+});
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+
+function isWall(x, y) {
+  const mx = x | 0, my = y | 0;
+  if (mx < 0 || mx >= MSIZE || my < 0 || my >= MSIZE) return true;
+  return MAP[my][mx] === 1;
+}
+
+// ── UPDATE ────────────────────────────────────────────────────────────────────
+
+const MOVE_SPD = 0.06;
+const ROT_SPD  = 0.04;
+let torchPhase = 0;
+
+function update(dt) {
+  if (gameState !== 'game') return;
+  torchPhase += dt * 4;
+  const ms = MOVE_SPD * dt * 60;
+  const rs = ROT_SPD  * dt * 60;
+  if (keys['KeyW'] || keys['ArrowUp']) {
+    if (!isWall(player.x + player.dirX * ms, player.y)) player.x += player.dirX * ms;
+    if (!isWall(player.x, player.y + player.dirY * ms)) player.y += player.dirY * ms;
+  }
+  if (keys['KeyS'] || keys['ArrowDown']) {
+    if (!isWall(player.x - player.dirX * ms, player.y)) player.x -= player.dirX * ms;
+    if (!isWall(player.x, player.y - player.dirY * ms)) player.y -= player.dirY * ms;
+  }
+  if (keys['KeyQ']) {
+    if (!isWall(player.x - player.planeX * ms, player.y)) player.x -= player.planeX * ms;
+    if (!isWall(player.x, player.y - player.planeY * ms)) player.y -= player.planeY * ms;
+  }
+  if (keys['KeyE']) {
+    if (!isWall(player.x + player.planeX * ms, player.y)) player.x += player.planeX * ms;
+    if (!isWall(player.x, player.y + player.planeY * ms)) player.y += player.planeY * ms;
+  }
+  if (keys['KeyA'] || keys['ArrowLeft']) rotate(-rs);
+  if (keys['KeyD'] || keys['ArrowRight']) rotate(rs);
+}
+
+function rotate(a) {
+  const cos = Math.cos(a), sin = Math.sin(a);
+  const dx = player.dirX, px = player.planeX;
+  player.dirX   = dx * cos - player.dirY  * sin;
+  player.dirY   = dx * sin + player.dirY  * cos;
+  player.planeX = px * cos - player.planeY * sin;
+  player.planeY = px * sin + player.planeY * cos;
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+
+const imgData = ctx.createImageData(W, H);
+const buf     = imgData.data;
+
+function px(x, y, r, g, b) {
+  const i = (y * W + x) << 2;
+  buf[i] = r; buf[i+1] = g; buf[i+2] = b; buf[i+3] = 255;
+}
+
+function renderTitle() {
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+  const t  = performance.now() / 1000;
+  const fl = 0.82 + Math.sin(t * 6.3) * 0.06 + Math.sin(t * 14.7) * 0.02;
+  ctx.strokeStyle = `rgba(100,70,30,${fl * 0.6})`;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(20, 20, W - 40, H - 40);
+  ctx.strokeRect(26, 26, W - 52, H - 52);
+  ctx.shadowColor = `rgba(255,150,30,${fl * 0.9})`;
+  ctx.shadowBlur  = 28;
+  ctx.fillStyle   = `rgba(210,160,55,${fl})`;
+  ctx.font        = 'bold 78px "Courier New", monospace';
+  ctx.textAlign   = 'center';
+  ctx.fillText('STONE',  W / 2, 130);
+  ctx.fillText('TOWERS', W / 2, 218);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = `rgba(160,130,70,${fl * 0.85})`;
+  ctx.font = '16px "Courier New", monospace';
+  ctx.fillText('Dungeon Walker', W / 2, 258);
+  const blink = Math.sin(t * 3) > 0;
+  ctx.fillStyle = blink ? `rgba(200,170,80,${fl})` : `rgba(100,80,30,${fl})`;
+  ctx.font = '13px "Courier New", monospace';
+  ctx.fillText('— Press ENTER or click to begin —', W / 2, 310);
+  ctx.fillStyle = '#333';
+  ctx.font      = '11px "Courier New", monospace';
+  ctx.fillText('original game by  raist · ernie · dusty  |  web port powered by Claude AI', W / 2, H - 28);
+}
+
+function renderGame() {
+  const torch = 0.88 + Math.sin(torchPhase * 1.1) * 0.05
+                     + Math.sin(torchPhase * 3.9) * 0.02;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      if (y < H >> 1) {
+        const t = y / (H >> 1);
+        px(x, y, ((14 + t *  9) * torch) | 0, ((14 + t *  9) * torch) | 0, ((20 + t * 13) * torch) | 0);
+      } else {
+        const t = (y - (H >> 1)) / (H >> 1);
+        px(x, y, ((10 + t * 18) * torch) | 0, ((8 + t * 14) * torch) | 0, ((6 + t * 10) * torch) | 0);
+      }
+    }
+  }
+  const tex = textures[1];
+  for (let sx = 0; sx < W; sx++) {
+    const camX = 2 * sx / W - 1;
+    const rdx  = player.dirX + player.planeX * camX;
+    const rdy  = player.dirY + player.planeY * camX;
+    let mx = player.x | 0, my = player.y | 0;
+    const ddx = rdx === 0 ? 1e30 : Math.abs(1 / rdx);
+    const ddy = rdy === 0 ? 1e30 : Math.abs(1 / rdy);
+    let sdx, sdy, stepx, stepy;
+    if (rdx < 0) { stepx = -1; sdx = (player.x - mx) * ddx; }
+    else          { stepx =  1; sdx = (mx + 1 - player.x) * ddx; }
+    if (rdy < 0) { stepy = -1; sdy = (player.y - my) * ddy; }
+    else          { stepy =  1; sdy = (my + 1 - player.y) * ddy; }
+    let side = 0, hit = 0;
+    for (let n = 0; n < 64 && !hit; n++) {
+      if (sdx < sdy) { sdx += ddx; mx += stepx; side = 0; }
+      else            { sdy += ddy; my += stepy; side = 1; }
+      if (mx < 0 || mx >= MSIZE || my < 0 || my >= MSIZE) hit = 1;
+      else if (MAP[my][mx] === 1) hit = 1;
+    }
+    const dist = Math.max(0.01, side === 0 ? sdx - ddx : sdy - ddy);
+    const lh   = (H / dist) | 0;
+    const y0   = Math.max(0,   ((H - lh) >> 1));
+    const y1   = Math.min(H-1, ((H + lh) >> 1));
+    let wallX  = side === 0 ? player.y + dist * rdy : player.x + dist * rdx;
+    wallX -= Math.floor(wallX);
+    let tx = (wallX * TEX) | 0;
+    if (side === 0 && rdx > 0) tx = TEX - tx - 1;
+    if (side === 1 && rdy < 0) tx = TEX - tx - 1;
+    const step  = TEX / lh;
+    let   tp    = ((y0 - (H >> 1) + (lh >> 1)) * step);
+    const fog   = Math.max(0, 1 - dist / FOG) * torch;
+    const side_d = side === 1 ? 0.63 : 1.0;
+    for (let sy = y0; sy <= y1; sy++) {
+      const ty = ((tp | 0) & (TEX - 1));
+      tp += step;
+      const ti = (ty * TEX + tx) << 2;
+      const f  = fog * side_d;
+      px(sx, sy, (tex[ti] * f) | 0, (tex[ti+1] * f) | 0, (tex[ti+2] * f) | 0);
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+  drawCompass();
+  drawCrosshair();
+  if (showMap) drawMinimap();
+}
+
+function drawCrosshair() {
+  const cx = W >> 1, cy = H >> 1;
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.lineWidth   = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx - 8, cy); ctx.lineTo(cx + 8, cy);
+  ctx.moveTo(cx, cy - 8); ctx.lineTo(cx, cy + 8);
+  ctx.stroke();
+}
+
+function drawCompass() {
+  const ang  = Math.atan2(player.dirX, -player.dirY);
+  const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+  const idx  = (Math.round(((ang + Math.PI) / (Math.PI * 2)) * 8) % 8 + 8) % 8;
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(W - 56, 8, 48, 26);
+  ctx.fillStyle = '#c8a030';
+  ctx.font      = '15px "Courier New", monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText(dirs[idx], W - 12, 28);
+}
+
+function drawMinimap() {
+  const S  = 8, OX = 10, OY = 10;
+  const MW = MSIZE * S, MH = MSIZE * S;
+  ctx.fillStyle = 'rgba(0,0,0,0.72)';
+  ctx.fillRect(OX - 2, OY - 2, MW + 4, MH + 4);
+  for (let my = 0; my < MSIZE; my++) {
+    for (let mx = 0; mx < MSIZE; mx++) {
+      ctx.fillStyle = MAP[my][mx] === 1 ? '#3a2810' : '#1a1208';
+      ctx.fillRect(OX + mx * S, OY + my * S, S - 1, S - 1);
+    }
+  }
+  const ppx = OX + player.x * S, ppy = OY + player.y * S;
+  ctx.fillStyle = '#ffd040';
+  ctx.beginPath(); ctx.arc(ppx, ppy, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#ffd040'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(ppx, ppy);
+  ctx.lineTo(ppx + player.dirX * 12, ppy + player.dirY * 12);
+  ctx.stroke();
+}
+
+// ── LOOP ──────────────────────────────────────────────────────────────────────
+
+let lastTs = 0;
+function loop(ts) {
+  const dt = Math.min((ts - lastTs) / 1000, 0.05);
+  lastTs = ts;
+  update(dt);
+  if (gameState === 'title') renderTitle();
+  else                       renderGame();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(ts => { lastTs = ts; requestAnimationFrame(loop); });
+
+  </script>
+</body>
+</html>
