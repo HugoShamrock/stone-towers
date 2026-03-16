@@ -1,0 +1,1620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stone Towers – The Adventure</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a0a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Courier New', monospace;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    canvas {
+      display: block;
+      cursor: default;
+      image-rendering: pixelated;
+    }
+    #hint {
+      margin-top: 8px;
+      font-size: 10px;
+      color: #333;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+    #hint span { color: #555; }
+  </style>
+</head>
+<body>
+  <canvas id="c" width="640" height="400"></canvas>
+  <div id="hint">
+    <span>Arrows/WASD</span> move &nbsp; <span>1-5</span> spells &nbsp; <span>click</span> interact &nbsp; <span>Enter</span> confirm
+  </div>
+
+  <script>
+'use strict';
+
+// ── CANVAS SETUP ─────────────────────────────────────────────────────────────
+
+const W = 640, H = 400;
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+canvas.setAttribute('tabindex', '0');
+canvas.focus();
+canvas.addEventListener('click', () => canvas.focus());
+
+// ── GAME STATE ───────────────────────────────────────────────────────────────
+// gameState: 'title' | 'game' | 'gameover' | 'win'
+
+let gameState = 'title';
+
+// Player
+let x8, y8, z8;   // position (1-9), direction (1=N,2=E,3=S,4=W)
+let mana, hp;
+let dia = 0;       // diamond found flag
+
+// batoh: inventory array, indices 0..5, values 0=empty
+// item values: 1=Apple,2=Coin,3=Scroll,4=Dead Bat,5=Old Key,6=Magic Cross,7=Torch
+let batoh;
+
+// l1[x][y][z] — room state for each position+direction on level 1
+// x=1..9, y=1..9, z=1..4
+let l1;
+
+// Message log
+let message = '';
+let messageTimer = 0;
+
+// Animation tick
+let tick = 0;
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+
+function initGame() {
+  x8 = 1; y8 = 6; z8 = 1;
+  mana = 1; hp = 4; dia = 0;
+  batoh = [1, 0, 0, 0, 0, 0]; // start with apple in slot 0
+
+  // Build l1: init everything to 0
+  l1 = [];
+  for (let x = 0; x <= 9; x++) {
+    l1[x] = [];
+    for (let y = 0; y <= 9; y++) {
+      l1[x][y] = [0, 0, 0, 0, 0]; // z 0..4
+    }
+  }
+
+  // Accessible rooms from init1() — all 4 directions state=1
+  const rooms = [
+    [1,5],[1,6],[2,5],[3,5],
+    [4,1],[4,2],[4,3],[4,4],[4,5],[4,6],
+    [5,6],[5,7],
+    [6,4],[6,5],[6,6]
+  ];
+  for (const [rx, ry] of rooms) {
+    for (let z = 1; z <= 4; z++) l1[rx][ry][z] = 1;
+  }
+
+  // Special encounter states
+  // Skeleton/corpse at (1,5,1) — state=1 means "has loot"
+  // (already state=1 from above, interaction will change it)
+
+  // Fire/firepit at (1,6,3): state=2 means "has torch to take"
+  l1[1][6][3] = 2;
+
+  // Bat at (2,5,2): state=4 = alive bat
+  l1[2][5][2] = 4;
+  // Bat blocks (3,5) until killed
+  for (let z = 1; z <= 4; z++) l1[3][5][z] = 0;
+
+  // Magpie at (4,5,2): state=1 = has key
+  // (already 1)
+
+  // Wolf at (4,3,1): state=6 = alive wolf
+  l1[4][3][1] = 6;
+  // Wolf blocks (4,2) until defeated
+  for (let z = 1; z <= 4; z++) l1[4][2][z] = 0;
+
+  // Druid at (5,7,3): state=1 = ready to trade
+  // (already 1)
+
+  // Well at (6,6,2): state=1 = untouched
+  // (already 1)
+
+  // Goblin at (6,4,1): state=1 = alive goblin
+  // (already 1)
+
+  // Locked door at (4,1,1): state=1 = locked
+  // (already 1)
+
+  message = 'You stand at the edge of the dungeon...';
+  messageTimer = 180;
+}
+
+// ── LAYOUT CONSTANTS ─────────────────────────────────────────────────────────
+
+// Scene viewport (top-left)
+const SX = 8, SY = 8, SW = 400, SH = 260;
+// Right panel
+const RPX = 420, RPY = 8, RPW = 212, RPH = 260;
+// Bottom bar
+const BBX = 0, BBY = H - 132, BBW = W, BBH = 132;
+
+// Spell buttons (5 buttons in right panel, top portion)
+const SPELL_BTN = [];
+for (let i = 0; i < 5; i++) {
+  SPELL_BTN.push({ x: RPX + (i % 5) * 42, y: RPY + 4, w: 40, h: 30 });
+}
+
+// Navigation grid: turn-left / forward / turn-right / strafe-left / back / strafe-right
+const NAV = [
+  { label: '↰', action: 'turnLeft',    x: RPX + 2,   y: RPY + 48,  w: 60, h: 42 },
+  { label: '↑', action: 'forward',     x: RPX + 70,  y: RPY + 48,  w: 68, h: 42 },
+  { label: '↱', action: 'turnRight',   x: RPX + 146, y: RPY + 48,  w: 60, h: 42 },
+  { label: '◁', action: 'strafeLeft',  x: RPX + 2,   y: RPY + 98,  w: 60, h: 42 },
+  { label: '↓', action: 'back',        x: RPX + 70,  y: RPY + 98,  w: 68, h: 42 },
+  { label: '▷', action: 'strafeRight', x: RPX + 146, y: RPY + 98,  w: 60, h: 42 },
+];
+
+// Inventory slots: 6 slots in bottom bar
+const INV_SLOTS = [];
+for (let i = 0; i < 6; i++) {
+  INV_SLOTS.push({ x: BBX + 8 + i * 72, y: BBY + 70, w: 64, h: 54 });
+}
+
+// Selected inventory slot
+let selectedSlot = -1;
+
+// ── MOVEMENT ─────────────────────────────────────────────────────────────────
+
+function getTarget(action) {
+  // Returns {nx, ny, nz} for a movement action
+  let nx = x8, ny = y8, nz = z8;
+  if (action === 'turnLeft') {
+    nz = z8 === 1 ? 4 : z8 - 1;
+    return { nx, ny, nz };
+  }
+  if (action === 'turnRight') {
+    nz = z8 === 4 ? 1 : z8 + 1;
+    return { nx, ny, nz };
+  }
+  // Movement offsets per direction
+  const fwd = { 1:{dx:0,dy:-1}, 2:{dx:1,dy:0}, 3:{dx:0,dy:1}, 4:{dx:-1,dy:0} };
+  const bk  = { 1:{dx:0,dy:1},  2:{dx:-1,dy:0},3:{dx:0,dy:-1},4:{dx:1,dy:0}  };
+  const sl  = { 1:{dx:-1,dy:0}, 2:{dx:0,dy:-1},3:{dx:1,dy:0}, 4:{dx:0,dy:1}  };
+  const sr  = { 1:{dx:1,dy:0},  2:{dx:0,dy:1}, 3:{dx:-1,dy:0},4:{dx:0,dy:-1} };
+  let d;
+  if (action === 'forward')     d = fwd[z8];
+  else if (action === 'back')   d = bk[z8];
+  else if (action === 'strafeLeft')  d = sl[z8];
+  else if (action === 'strafeRight') d = sr[z8];
+  else return null;
+  nx = x8 + d.dx; ny = y8 + d.dy;
+  // For strafe, we keep the same direction
+  return { nx, ny, nz };
+}
+
+function tryMove(action) {
+  if (action === 'turnLeft' || action === 'turnRight') {
+    const t = getTarget(action);
+    z8 = t.nz;
+    return;
+  }
+  const t = getTarget(action);
+  if (!t) return;
+  const { nx, ny, nz } = t;
+  if (nx < 1 || nx > 9 || ny < 1 || ny > 9) { showMsg("You can't go that way."); return; }
+  if (l1[nx][ny][nz] <= 0) { showMsg("The way is blocked."); return; }
+  x8 = nx; y8 = ny;
+  // After moving, check for auto-events
+  onEnterRoom();
+}
+
+function onEnterRoom() {
+  // Bat attacks
+  if (x8 === 2 && y8 === 5 && l1[2][5][2] === 4) {
+    showMsg("A bat swoops at you! (-1 HP)");
+    hp = Math.max(0, hp - 1);
+    if (hp <= 0) { gameState = 'gameover'; return; }
+  }
+  // Wolf attacks
+  if (x8 === 4 && y8 === 3 && l1[4][3][1] === 6) {
+    showMsg("The wolf lunges at you! (-1 HP)");
+    hp = Math.max(0, hp - 1);
+    if (hp <= 0) { gameState = 'gameover'; return; }
+  }
+  // Goblin attacks
+  if (x8 === 6 && y8 === 4 && l1[6][4][1] === 1) {
+    showMsg("The goblin slashes at you! (-1 HP)");
+    hp = Math.max(0, hp - 1);
+    if (hp <= 0) { gameState = 'gameover'; return; }
+  }
+}
+
+// ── ITEM NAMES ────────────────────────────────────────────────────────────────
+
+const ITEM_NAMES = ['', 'Red Apple', 'Gold Coin', 'Scroll', 'Dead Bat', 'Old Key', 'Magic Cross', 'Burning Torch'];
+
+function addItem(itemId) {
+  for (let i = 0; i < 6; i++) {
+    if (batoh[i] === 0) { batoh[i] = itemId; return true; }
+  }
+  showMsg("Your pack is full!");
+  return false;
+}
+
+function removeItem(itemId) {
+  for (let i = 0; i < 6; i++) {
+    if (batoh[i] === itemId) { batoh[i] = 0; return true; }
+  }
+  return false;
+}
+
+function hasItem(itemId) {
+  return batoh.includes(itemId);
+}
+
+// ── INTERACTION ───────────────────────────────────────────────────────────────
+
+function showMsg(txt) {
+  message = txt;
+  messageTimer = 240;
+}
+
+function interact() {
+  const cx = x8, cy = y8, cz = z8;
+  const state = l1[cx][cy][cz];
+
+  // (1,5,1): Skeleton
+  if (cx === 1 && cy === 5 && cz === 1) {
+    if (state === 1) {
+      showMsg("You search the skeleton... Found Gold Coin and a Scroll!");
+      addItem(2); addItem(3);
+      l1[1][5][1] = 9; // looted
+    } else {
+      showMsg("The skeleton has been looted already.");
+    }
+    return;
+  }
+
+  // (1,6,3): Firepit / Torch
+  if (cx === 1 && cy === 6 && cz === 3) {
+    if (state === 2) {
+      showMsg("You grab a torch from the firepit.");
+      addItem(7); // Burning Torch
+      l1[1][6][3] = 9;
+    } else if (state === 9) {
+      showMsg("The firepit is cold and empty.");
+    } else {
+      showMsg("A firepit crackles in the corner.");
+    }
+    return;
+  }
+
+  // (2,5,2): Bat
+  if (cx === 2 && cy === 5 && cz === 2) {
+    if (state === 4) {
+      showMsg("The bat screeches and attacks! Use a spell to defeat it.");
+    } else if (state === 9) {
+      showMsg("The dead bat lies on the ground.");
+      if (!hasItem(4)) {
+        addItem(4); // Dead Bat
+        showMsg("You pick up the dead bat.");
+      }
+    }
+    return;
+  }
+
+  // (4,5,2): Magpie
+  if (cx === 4 && cy === 5 && cz === 2) {
+    if (state === 1) {
+      showMsg("A magpie clutches an old key. It wants something shiny...");
+      if (hasItem(2)) {
+        showMsg("You offer the Gold Coin. The magpie drops the key!");
+        removeItem(2);
+        l1[4][5][2] = 4; // key dropped
+      }
+    } else if (state === 4) {
+      showMsg("You pick up the Old Key.");
+      addItem(5);
+      l1[4][5][2] = 9;
+    } else {
+      showMsg("The magpie watches you with beady eyes.");
+    }
+    return;
+  }
+
+  // (4,3,1): Wolf
+  if (cx === 4 && cy === 3 && cz === 1) {
+    if (state === 6) {
+      showMsg("A wolf growls at you. Use Magic Cross or Move spell!");
+    } else {
+      showMsg("The wolf is gone.");
+    }
+    return;
+  }
+
+  // (5,7,3): Druid
+  if (cx === 5 && cy === 7 && cz === 3) {
+    if (state === 1) {
+      showMsg("A druid sits meditating. 'Bring me a dead bat,' he rasps.");
+      if (hasItem(4)) {
+        showMsg("You offer the Dead Bat. The druid hands you a Magic Cross!");
+        removeItem(4);
+        addItem(6); // Magic Cross
+        l1[5][7][3] = 9;
+      }
+    } else {
+      showMsg("The druid meditates in silence.");
+    }
+    return;
+  }
+
+  // (6,6,2): Well
+  if (cx === 6 && cy === 6 && cz === 2) {
+    if (state === 1) {
+      showMsg("You drink from the magical well. Mana restored! (+1)");
+      mana = Math.min(5, mana + 1);
+      l1[6][6][2] = 2; // used once
+    } else {
+      showMsg("The well is dry.");
+    }
+    return;
+  }
+
+  // (6,4,1): Goblin / Diamond
+  if (cx === 6 && cy === 4 && cz === 1) {
+    if (state === 1) {
+      showMsg("A goblin blocks your path! Use Move spell (costs 2 mana).");
+    } else if (state === 8) {
+      showMsg("A sparkling diamond lies on the ground!");
+      dia = 1;
+      l1[6][4][1] = 9;
+      showMsg("You take the diamond.");
+    } else {
+      showMsg("The goblin is gone.");
+    }
+    return;
+  }
+
+  // (4,1,1): Locked Door
+  if (cx === 4 && cy === 1 && cz === 1) {
+    if (state === 1) {
+      if (hasItem(5)) {
+        showMsg("You use the Old Key. The lock clicks open!");
+        removeItem(5);
+        l1[4][1][1] = 2; // unlocked, dark
+      } else {
+        showMsg("A locked door. You need a key.");
+      }
+    } else if (state === 2) {
+      if (hasItem(7)) {
+        showMsg("You light the way with your Burning Torch. The door opens!");
+        removeItem(7);
+        l1[4][1][1] = 3; // lit and open
+      } else {
+        showMsg("The door is unlocked but it is pitch dark beyond. You need a torch.");
+      }
+    } else if (state === 3) {
+      if (dia === 1) {
+        showMsg("You step through... YOU WIN!");
+        gameState = 'win';
+      } else {
+        showMsg("The door is open, but you feel you are missing something precious...");
+      }
+    }
+    return;
+  }
+
+  // (4,1,2): Also check the door from east side
+  if (cx === 4 && cy === 1) {
+    showMsg("An ancient door looms before you.");
+    return;
+  }
+
+  // Scroll read
+  if (selectedSlot >= 0 && batoh[selectedSlot] === 3) {
+    showMsg("'Beware the wolf and goblin. Fire defeats darkness. A key unlocks fate.'");
+    return;
+  }
+
+  showMsg("Nothing notable here.");
+}
+
+// ── USE ITEM ──────────────────────────────────────────────────────────────────
+
+function useItem(slot) {
+  const item = batoh[slot];
+  if (item === 0) return;
+  const cx = x8, cy = y8, cz = z8;
+
+  if (item === 1) { // Apple
+    if (hp >= 5) { showMsg("You are already at full health."); return; }
+    hp = Math.min(5, hp + 1);
+    batoh[slot] = 0;
+    showMsg("You eat the apple. (+1 HP)");
+    return;
+  }
+
+  if (item === 3) { // Scroll
+    showMsg("You read the scroll: 'Beware the wolf and goblin. Fire defeats darkness. A key unlocks fate.'");
+    return;
+  }
+
+  if (item === 6) { // Magic Cross — use on wolf
+    if (cx === 4 && cy === 3 && l1[4][3][1] === 6) {
+      showMsg("You brandish the Magic Cross! The wolf howls and flees!");
+      l1[4][3][1] = 8;
+      for (let z = 1; z <= 4; z++) l1[4][2][z] = 1;
+      batoh[slot] = 0;
+      selectedSlot = -1;
+      return;
+    }
+    showMsg("The Magic Cross glows faintly but nothing happens here.");
+    return;
+  }
+
+  if (item === 2) { // Gold Coin — give to magpie
+    if (cx === 4 && cy === 5 && cz === 2 && l1[4][5][2] === 1) {
+      showMsg("You offer the Gold Coin. The magpie drops the key!");
+      batoh[slot] = 0;
+      l1[4][5][2] = 4;
+      selectedSlot = -1;
+      return;
+    }
+    showMsg("The coin catches the light but serves no purpose here.");
+    return;
+  }
+
+  if (item === 4) { // Dead Bat — give to druid
+    if (cx === 5 && cy === 7 && cz === 3 && l1[5][7][3] === 1) {
+      showMsg("You offer the Dead Bat. The druid hands you a Magic Cross!");
+      batoh[slot] = 0;
+      addItem(6);
+      l1[5][7][3] = 9;
+      selectedSlot = -1;
+      return;
+    }
+    showMsg("The dead bat is not useful here.");
+    return;
+  }
+
+  if (item === 5) { // Old Key
+    if (cx === 4 && cy === 1 && cz === 1 && l1[4][1][1] === 1) {
+      showMsg("You use the Old Key. The lock clicks open!");
+      batoh[slot] = 0;
+      l1[4][1][1] = 2;
+      selectedSlot = -1;
+      return;
+    }
+    showMsg("The key fits nothing here.");
+    return;
+  }
+
+  if (item === 7) { // Burning Torch
+    if (cx === 4 && cy === 1 && cz === 1 && l1[4][1][1] === 2) {
+      showMsg("You light the way with your Burning Torch. The door opens!");
+      batoh[slot] = 0;
+      l1[4][1][1] = 3;
+      selectedSlot = -1;
+      return;
+    }
+    showMsg("The torch lights your path but nothing happens here.");
+    return;
+  }
+
+  showMsg("You can't use that here.");
+}
+
+// ── SPELLS ────────────────────────────────────────────────────────────────────
+// 1=Fire, 2=Freeze, 3=Flash, 4=Death, 5=Move
+
+const SPELL_NAMES = ['', 'Fire', 'Freeze', 'Flash', 'Death', 'Move'];
+const SPELL_COST  = [0, 1, 1, 1, 2, 2];
+
+function castSpell(sp) {
+  const cost = SPELL_COST[sp];
+  if (mana < cost) { showMsg(`Not enough mana! Need ${cost}.`); return; }
+  const cx = x8, cy = y8, cz = z8;
+
+  if (sp === 1) { // Fire
+    if (cx === 2 && cy === 5 && l1[2][5][2] === 4) {
+      mana -= cost;
+      showMsg("Fire! The bat bursts into flames and falls dead.");
+      l1[2][5][2] = 9;
+      for (let z = 1; z <= 4; z++) l1[3][5][z] = 1;
+      // Dead bat item is now claimable
+      return;
+    }
+    showMsg("Fire spell fizzles — nothing to burn here.");
+    return;
+  }
+
+  if (sp === 2) { // Freeze
+    showMsg("Freeze! The air turns cold... but nothing is frozen.");
+    mana -= cost;
+    return;
+  }
+
+  if (sp === 3) { // Flash
+    showMsg("Flash! A blinding light fills the room.");
+    mana -= cost;
+    return;
+  }
+
+  if (sp === 4) { // Death
+    if (cx === 4 && cy === 3 && l1[4][3][1] === 6) {
+      mana -= cost;
+      showMsg("Death spell! The wolf collapses!");
+      l1[4][3][1] = 8;
+      for (let z = 1; z <= 4; z++) l1[4][2][z] = 1;
+      return;
+    }
+    if (cx === 2 && cy === 5 && l1[2][5][2] === 4) {
+      mana -= cost;
+      showMsg("Death spell! The bat drops dead.");
+      l1[2][5][2] = 9;
+      for (let z = 1; z <= 4; z++) l1[3][5][z] = 1;
+      return;
+    }
+    showMsg("Death spell! ...nothing dies here.");
+    mana -= cost;
+    return;
+  }
+
+  if (sp === 5) { // Move
+    if (cx === 6 && cy === 4 && l1[6][4][1] === 1) {
+      mana -= cost;
+      showMsg("Move spell! The goblin flies across the room. A diamond appears!");
+      l1[6][4][1] = 8;
+      return;
+    }
+    if (cx === 4 && cy === 3 && l1[4][3][1] === 6) {
+      mana -= cost;
+      showMsg("Move spell! The wolf is flung aside!");
+      l1[4][3][1] = 8;
+      for (let z = 1; z <= 4; z++) l1[4][2][z] = 1;
+      return;
+    }
+    showMsg("Move spell — nothing to move here.");
+    return;
+  }
+}
+
+// ── SCENE RENDERER ────────────────────────────────────────────────────────────
+// Painter's algorithm, Wizardry/Bard's Tale style
+// Depth layers as fractions of SW x SH
+
+// d0: full, d1: 88/90%, d2: 74/78%, d3: 62/66%
+const DEPTHS = [
+  { x0: 0.00, y0: 0.00, x1: 1.00, y1: 1.00 },
+  { x0: 0.12, y0: 0.10, x1: 0.88, y1: 0.90 },
+  { x0: 0.26, y0: 0.22, x1: 0.74, y1: 0.78 },
+  { x0: 0.38, y0: 0.34, x1: 0.62, y1: 0.66 },
+];
+
+function dRect(d) {
+  const dep = DEPTHS[d];
+  return {
+    x: SX + dep.x0 * SW,
+    y: SY + dep.y0 * SH,
+    w: (dep.x1 - dep.x0) * SW,
+    h: (dep.y1 - dep.y0) * SH,
+    r: SX + dep.x1 * SW,
+    b: SY + dep.y1 * SH,
+  };
+}
+
+function drawScene() {
+  const torchLit = hasItem(7) || l1[1][6][3] === 2; // has torch or near firepit
+  const ambientMult = torchLit ? 1.0 : 0.72;
+
+  // Background: ceiling + floor gradient
+  const grad = ctx.createLinearGradient(SX, SY, SX, SY + SH);
+  grad.addColorStop(0,    `rgba(${(14*ambientMult)|0},${(14*ambientMult)|0},${(22*ambientMult)|0},1)`);
+  grad.addColorStop(0.48, `rgba(${(28*ambientMult)|0},${(26*ambientMult)|0},${(36*ambientMult)|0},1)`);
+  grad.addColorStop(0.52, `rgba(${(22*ambientMult)|0},${(16*ambientMult)|0},${(10*ambientMult)|0},1)`);
+  grad.addColorStop(1,    `rgba(${(40*ambientMult)|0},${(28*ambientMult)|0},${(16*ambientMult)|0},1)`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(SX, SY, SW, SH);
+
+  // Determine how many steps ahead are accessible
+  // Look forward up to 3 steps
+  const fwd = { 1:{dx:0,dy:-1}, 2:{dx:1,dy:0}, 3:{dx:0,dy:1}, 4:{dx:-1,dy:0} };
+  const fd = fwd[z8];
+
+  const steps = [];
+  for (let d = 1; d <= 3; d++) {
+    const nx = x8 + fd.dx * d;
+    const ny = y8 + fd.dy * d;
+    if (nx < 1 || nx > 9 || ny < 1 || ny > 9) { steps.push(false); break; }
+    steps.push(l1[nx][ny][z8] > 0);
+  }
+
+  // Draw walls back-to-front (painter's algorithm)
+  // stone color base
+  const stoneBase = [72, 65, 52];
+  const mortarBase = [38, 34, 28];
+
+  // Helper: draw a stone-textured quad
+  function stoneRect(x, y, w, h, shade) {
+    const r = (stoneBase[0] * shade) | 0;
+    const g = (stoneBase[1] * shade) | 0;
+    const b = (stoneBase[2] * shade) | 0;
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(x, y, w, h);
+    // Mortar lines
+    ctx.strokeStyle = `rgb(${(mortarBase[0]*shade)|0},${(mortarBase[1]*shade)|0},${(mortarBase[2]*shade)|0})`;
+    ctx.lineWidth = 0.5;
+    const brickH = Math.max(6, h / 5);
+    for (let by = y; by < y + h; by += brickH) {
+      ctx.beginPath(); ctx.moveTo(x, by); ctx.lineTo(x + w, by); ctx.stroke();
+    }
+  }
+
+  // Draw side-wall trapezoids at each depth
+  function drawCorridorWalls(d0, d1, wallShade) {
+    const r0 = dRect(d0), r1 = dRect(d1);
+    // Left wall trapezoid
+    ctx.fillStyle = `rgb(${(stoneBase[0]*wallShade)|0},${(stoneBase[1]*wallShade)|0},${(stoneBase[2]*wallShade)|0})`;
+    ctx.beginPath();
+    ctx.moveTo(r0.x, r0.y); ctx.lineTo(r1.x, r1.y);
+    ctx.lineTo(r1.x, r1.b); ctx.lineTo(r0.x, r0.b);
+    ctx.closePath(); ctx.fill();
+    // Mortar lines on left wall
+    ctx.strokeStyle = `rgb(${(mortarBase[0]*wallShade)|0},${(mortarBase[1]*wallShade)|0},${(mortarBase[2]*wallShade)|0})`;
+    ctx.lineWidth = 0.5;
+    for (let li = 0; li <= 4; li++) {
+      const ly0 = r0.y + li * (r0.h / 4);
+      const ly1 = r1.y + li * (r1.h / 4);
+      ctx.beginPath(); ctx.moveTo(r0.x, ly0); ctx.lineTo(r1.x, ly1); ctx.stroke();
+    }
+    // Right wall trapezoid
+    ctx.fillStyle = `rgb(${(stoneBase[0]*wallShade)|0},${(stoneBase[1]*wallShade)|0},${(stoneBase[2]*wallShade)|0})`;
+    ctx.beginPath();
+    ctx.moveTo(r0.r, r0.y); ctx.lineTo(r1.r, r1.y);
+    ctx.lineTo(r1.r, r1.b); ctx.lineTo(r0.r, r0.b);
+    ctx.closePath(); ctx.fill();
+    for (let li = 0; li <= 4; li++) {
+      const ly0 = r0.y + li * (r0.h / 4);
+      const ly1 = r1.y + li * (r1.h / 4);
+      ctx.beginPath(); ctx.moveTo(r0.r, ly0); ctx.lineTo(r1.r, ly1); ctx.stroke();
+    }
+    // Ceiling and floor connecting slabs
+    ctx.fillStyle = `rgb(${(18*wallShade)|0},${(18*wallShade)|0},${(26*wallShade)|0})`;
+    ctx.beginPath(); // ceiling slab
+    ctx.moveTo(r0.x, r0.y); ctx.lineTo(r0.r, r0.y);
+    ctx.lineTo(r1.r, r1.y); ctx.lineTo(r1.x, r1.y);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = `rgb(${(30*wallShade)|0},${(20*wallShade)|0},${(12*wallShade)|0})`;
+    ctx.beginPath(); // floor slab
+    ctx.moveTo(r0.x, r0.b); ctx.lineTo(r0.r, r0.b);
+    ctx.lineTo(r1.r, r1.b); ctx.lineTo(r1.x, r1.b);
+    ctx.closePath(); ctx.fill();
+  }
+
+  // Determine max open depth
+  let maxDepth = 0;
+  for (let i = 0; i < steps.length; i++) {
+    if (steps[i]) maxDepth = i + 1; else break;
+  }
+
+  // Draw from back to front
+  if (maxDepth >= 3) {
+    // far wall at d3
+    const r3 = dRect(3);
+    stoneRect(r3.x, r3.y, r3.w, r3.h, 0.38 * ambientMult);
+  }
+  if (maxDepth >= 2) {
+    drawCorridorWalls(2, 3, 0.44 * ambientMult);
+  } else {
+    // back wall at d2
+    const r2 = dRect(2);
+    stoneRect(r2.x, r2.y, r2.w, r2.h, 0.52 * ambientMult);
+  }
+  if (maxDepth >= 1) {
+    drawCorridorWalls(1, 2, 0.62 * ambientMult);
+  } else {
+    // wall right in front (d1)
+    const r1 = dRect(1);
+    stoneRect(r1.x, r1.y, r1.w, r1.h, 0.72 * ambientMult);
+  }
+  drawCorridorWalls(0, 1, 0.80 * ambientMult);
+
+  // Draw NPC/objects in current room
+  drawRoomObjects();
+
+  // Scene border
+  ctx.strokeStyle = '#2a1f10';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(SX, SY, SW, SH);
+}
+
+function drawRoomObjects() {
+  const cx = x8, cy = y8, cz = z8;
+  const state = l1[cx][cy][cz];
+  const midX = SX + SW / 2;
+  const midY = SY + SH / 2;
+  const t = tick;
+
+  // (1,5,1): Skeleton
+  if (cx === 1 && cy === 5 && cz === 1 && state === 1) {
+    drawSkeleton(midX, midY + 10);
+    return;
+  }
+
+  // (1,6,3): Firepit
+  if (cx === 1 && cy === 6 && cz === 3 && state === 2) {
+    drawFirepit(midX, midY + 30, t);
+    return;
+  }
+
+  // (2,5,2): Bat
+  if (cx === 2 && cy === 5 && cz === 2) {
+    if (state === 4) { drawBat(midX, midY - 10, t); return; }
+    if (state === 9) { drawDeadBat(midX, midY + 30); return; }
+  }
+
+  // (4,5,2): Magpie
+  if (cx === 4 && cy === 5 && cz === 2) {
+    if (state === 1) { drawMagpie(midX, midY + 20, true); return; }
+    if (state === 4) { drawKeyOnGround(midX, midY + 40); return; }
+  }
+
+  // (4,3,1): Wolf
+  if (cx === 4 && cy === 3 && cz === 1 && state === 6) {
+    drawWolf(midX, midY + 15, t);
+    return;
+  }
+
+  // (5,7,3): Druid
+  if (cx === 5 && cy === 7 && cz === 3 && state === 1) {
+    drawDruid(midX, midY + 10, t);
+    return;
+  }
+
+  // (6,6,2): Well
+  if (cx === 6 && cy === 6 && cz === 2) {
+    drawWell(midX, midY + 20, t);
+    return;
+  }
+
+  // (6,4,1): Goblin or Diamond
+  if (cx === 6 && cy === 4 && cz === 1) {
+    if (state === 1) { drawGoblin(midX, midY + 10, t); return; }
+    if (state === 8) { drawDiamond(midX, midY + 10, t); return; }
+  }
+
+  // (4,1,1): Locked Door
+  if (cx === 4 && cy === 1 && cz === 1) {
+    drawDoor(midX, midY, state, t);
+    return;
+  }
+}
+
+// ── NPC DRAW FUNCTIONS ────────────────────────────────────────────────────────
+
+function drawSkeleton(cx, cy) {
+  ctx.save();
+  // Body
+  ctx.fillStyle = '#b8b0a0';
+  ctx.fillRect(cx - 14, cy - 60, 28, 50);
+  // Head (skull)
+  ctx.fillStyle = '#c8c0b0';
+  ctx.beginPath(); ctx.ellipse(cx, cy - 75, 18, 22, 0, 0, Math.PI * 2); ctx.fill();
+  // Eye sockets
+  ctx.fillStyle = '#1a1210';
+  ctx.beginPath(); ctx.ellipse(cx - 7, cy - 78, 5, 6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx + 7, cy - 78, 5, 6, 0, 0, Math.PI * 2); ctx.fill();
+  // Ribs
+  ctx.strokeStyle = '#8a8070';
+  ctx.lineWidth = 1.5;
+  for (let i = 0; i < 4; i++) {
+    const ry = cy - 52 + i * 10;
+    ctx.beginPath(); ctx.moveTo(cx - 14, ry); ctx.lineTo(cx + 14, ry); ctx.stroke();
+  }
+  // Arms
+  ctx.fillStyle = '#b0a898';
+  ctx.fillRect(cx - 28, cy - 58, 12, 40);
+  ctx.fillRect(cx + 16, cy - 58, 12, 40);
+  // Legs
+  ctx.fillRect(cx - 14, cy - 10, 10, 38);
+  ctx.fillRect(cx + 4, cy - 10, 10, 38);
+  ctx.restore();
+}
+
+function drawFirepit(cx, cy, t) {
+  ctx.save();
+  // Stone base
+  ctx.fillStyle = '#5a4a38';
+  ctx.beginPath(); ctx.ellipse(cx, cy + 10, 38, 14, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#3a2a1a';
+  ctx.fillRect(cx - 28, cy, 56, 16);
+  // Logs
+  ctx.strokeStyle = '#4a3020';
+  ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.moveTo(cx - 22, cy + 8); ctx.lineTo(cx + 22, cy + 4); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx - 18, cy + 4); ctx.lineTo(cx + 20, cy + 10); ctx.stroke();
+  // Flames
+  const flicker = Math.sin(t * 0.22) * 0.15 + Math.sin(t * 0.41) * 0.1;
+  const fh = 36 + flicker * 16;
+  // Outer flame
+  const grad = ctx.createRadialGradient(cx, cy - 10, 2, cx, cy, 28);
+  grad.addColorStop(0, `rgba(255,220,60,0.95)`);
+  grad.addColorStop(0.4, `rgba(255,120,20,0.85)`);
+  grad.addColorStop(1, `rgba(180,30,0,0)`);
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - fh);
+  ctx.quadraticCurveTo(cx + 18 + flicker * 8, cy - fh * 0.5, cx + 24, cy);
+  ctx.quadraticCurveTo(cx, cy + 4, cx - 24, cy);
+  ctx.quadraticCurveTo(cx - 18 - flicker * 8, cy - fh * 0.5, cx, cy - fh);
+  ctx.fill();
+  // Inner flame
+  ctx.fillStyle = `rgba(255,240,120,0.7)`;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - fh * 0.7);
+  ctx.quadraticCurveTo(cx + 8, cy - fh * 0.3, cx + 12, cy);
+  ctx.quadraticCurveTo(cx, cy + 2, cx - 12, cy);
+  ctx.quadraticCurveTo(cx - 8, cy - fh * 0.3, cx, cy - fh * 0.7);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawBat(cx, cy, t) {
+  ctx.save();
+  const flap = Math.sin(t * 0.30) * 22;
+  // Wings
+  ctx.fillStyle = '#1a0a2a';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.quadraticCurveTo(cx - 40, cy - flap, cx - 70, cy + 10);
+  ctx.quadraticCurveTo(cx - 45, cy + 20, cx, cy + 8);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.quadraticCurveTo(cx + 40, cy - flap, cx + 70, cy + 10);
+  ctx.quadraticCurveTo(cx + 45, cy + 20, cx, cy + 8);
+  ctx.fill();
+  // Body
+  ctx.fillStyle = '#2a1040';
+  ctx.beginPath(); ctx.ellipse(cx, cy + 4, 14, 18, 0, 0, Math.PI * 2); ctx.fill();
+  // Red eyes
+  ctx.fillStyle = '#ff1010';
+  ctx.beginPath(); ctx.arc(cx - 5, cy - 2, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 5, cy - 2, 4, 0, Math.PI * 2); ctx.fill();
+  // Eye glow
+  ctx.fillStyle = 'rgba(255,0,0,0.3)';
+  ctx.beginPath(); ctx.arc(cx - 5, cy - 2, 8, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 5, cy - 2, 8, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function drawDeadBat(cx, cy) {
+  ctx.save();
+  ctx.fillStyle = '#180830';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.quadraticCurveTo(cx - 28, cy - 10, cx - 50, cy + 4);
+  ctx.quadraticCurveTo(cx - 26, cy + 14, cx, cy + 6);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.quadraticCurveTo(cx + 28, cy - 10, cx + 50, cy + 4);
+  ctx.quadraticCurveTo(cx + 26, cy + 14, cx, cy + 6);
+  ctx.fill();
+  ctx.fillStyle = '#200a38';
+  ctx.beginPath(); ctx.ellipse(cx, cy + 3, 10, 12, 0, 0, Math.PI * 2); ctx.fill();
+  // X eyes
+  ctx.strokeStyle = '#602020'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(cx - 8, cy - 4); ctx.lineTo(cx - 4, cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx - 4, cy - 4); ctx.lineTo(cx - 8, cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + 4, cy - 4); ctx.lineTo(cx + 8, cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + 8, cy - 4); ctx.lineTo(cx + 4, cy); ctx.stroke();
+  ctx.restore();
+}
+
+function drawMagpie(cx, cy, hasKey) {
+  ctx.save();
+  // Body
+  ctx.fillStyle = '#e8e8e8';
+  ctx.beginPath(); ctx.ellipse(cx + 8, cy, 26, 16, -0.2, 0, Math.PI * 2); ctx.fill();
+  // Black head + wings
+  ctx.fillStyle = '#101010';
+  ctx.beginPath(); ctx.ellipse(cx - 10, cy - 6, 16, 12, 0.3, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx + 16, cy - 8, 10, 20, -0.3, 0, Math.PI * 2); ctx.fill(); // tail
+  // Beak
+  ctx.fillStyle = '#c0a020';
+  ctx.beginPath();
+  ctx.moveTo(cx - 22, cy - 6);
+  ctx.lineTo(cx - 30, cy - 3);
+  ctx.lineTo(cx - 22, cy); ctx.closePath(); ctx.fill();
+  // Eye
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.arc(cx - 13, cy - 8, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#000000';
+  ctx.beginPath(); ctx.arc(cx - 13, cy - 8, 2, 0, Math.PI * 2); ctx.fill();
+  // Key in beak
+  if (hasKey) {
+    ctx.strokeStyle = '#c0a020'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cx - 38, cy - 3, 6, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx - 32, cy - 3); ctx.lineTo(cx - 22, cy - 3); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx - 24, cy - 3); ctx.lineTo(cx - 24, cy + 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx - 28, cy - 3); ctx.lineTo(cx - 28, cy + 2); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawKeyOnGround(cx, cy) {
+  ctx.save();
+  ctx.strokeStyle = '#c0a020'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(cx, cy - 8, 10, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + 10, cy - 8); ctx.lineTo(cx + 26, cy - 8); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + 22, cy - 8); ctx.lineTo(cx + 22, cy - 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx + 18, cy - 8); ctx.lineTo(cx + 18, cy - 2); ctx.stroke();
+  ctx.restore();
+}
+
+function drawWolf(cx, cy, t) {
+  ctx.save();
+  const breathe = Math.sin(t * 0.08) * 2;
+  // Body
+  ctx.fillStyle = '#7a5a30';
+  ctx.beginPath(); ctx.ellipse(cx, cy + breathe, 52, 22, 0, 0, Math.PI * 2); ctx.fill();
+  // Head
+  ctx.fillStyle = '#8a6838';
+  ctx.beginPath(); ctx.ellipse(cx - 46, cy - 14 + breathe, 22, 18, -0.2, 0, Math.PI * 2); ctx.fill();
+  // Snout
+  ctx.fillStyle = '#6a4820';
+  ctx.beginPath(); ctx.ellipse(cx - 64, cy - 12 + breathe, 12, 8, 0, 0, Math.PI * 2); ctx.fill();
+  // Ears
+  ctx.fillStyle = '#8a6838';
+  ctx.beginPath();
+  ctx.moveTo(cx - 56, cy - 26 + breathe); ctx.lineTo(cx - 48, cy - 38 + breathe); ctx.lineTo(cx - 38, cy - 26 + breathe); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(cx - 42, cy - 26 + breathe); ctx.lineTo(cx - 34, cy - 38 + breathe); ctx.lineTo(cx - 24, cy - 26 + breathe); ctx.fill();
+  // Eyes
+  ctx.fillStyle = '#ff2020';
+  ctx.beginPath(); ctx.arc(cx - 53, cy - 16 + breathe, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx - 41, cy - 16 + breathe, 5, 0, Math.PI * 2); ctx.fill();
+  // Pupils
+  ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(cx - 53, cy - 16 + breathe, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx - 41, cy - 16 + breathe, 2, 0, Math.PI * 2); ctx.fill();
+  // Tail
+  ctx.fillStyle = '#7a5a30';
+  ctx.beginPath(); ctx.moveTo(cx + 52, cy + breathe);
+  ctx.quadraticCurveTo(cx + 72, cy - 18 + breathe, cx + 66, cy - 32 + breathe); ctx.lineWidth = 8;
+  ctx.stroke();
+  // Legs
+  ctx.fillStyle = '#6a4828';
+  ctx.fillRect(cx - 38, cy + 20 + breathe, 12, 28);
+  ctx.fillRect(cx - 18, cy + 20 + breathe, 12, 28);
+  ctx.fillRect(cx + 8, cy + 20 + breathe, 12, 28);
+  ctx.fillRect(cx + 28, cy + 20 + breathe, 12, 28);
+  ctx.restore();
+}
+
+function drawDruid(cx, cy, t) {
+  ctx.save();
+  const sway = Math.sin(t * 0.04) * 2;
+  // Robe
+  ctx.fillStyle = '#224422';
+  ctx.beginPath();
+  ctx.moveTo(cx - 28 + sway, cy + 60);
+  ctx.lineTo(cx - 20 + sway, cy - 30);
+  ctx.lineTo(cx + 20 + sway, cy - 30);
+  ctx.lineTo(cx + 28 + sway, cy + 60);
+  ctx.closePath(); ctx.fill();
+  // Hood
+  ctx.fillStyle = '#1a3a1a';
+  ctx.beginPath(); ctx.ellipse(cx + sway, cy - 40, 22, 28, 0, 0, Math.PI * 2); ctx.fill();
+  // Hood peak
+  ctx.beginPath();
+  ctx.moveTo(cx - 22 + sway, cy - 50); ctx.lineTo(cx + sway, cy - 82); ctx.lineTo(cx + 22 + sway, cy - 50);
+  ctx.closePath(); ctx.fill();
+  // Face in shadow
+  ctx.fillStyle = '#0a180a';
+  ctx.beginPath(); ctx.ellipse(cx + sway, cy - 42, 14, 16, 0, 0, Math.PI * 2); ctx.fill();
+  // Glowing eyes
+  ctx.fillStyle = '#80ff40';
+  ctx.beginPath(); ctx.arc(cx - 5 + sway, cy - 44, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 5 + sway, cy - 44, 3, 0, Math.PI * 2); ctx.fill();
+  // Staff
+  ctx.strokeStyle = '#5a3a10'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(cx + 32 + sway, cy + 60); ctx.lineTo(cx + 28 + sway, cy - 60); ctx.stroke();
+  ctx.fillStyle = '#8aff40';
+  ctx.beginPath(); ctx.arc(cx + 28 + sway, cy - 62, 7, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function drawWell(cx, cy, t) {
+  ctx.save();
+  // Stone base
+  ctx.fillStyle = '#5a5048';
+  ctx.beginPath(); ctx.ellipse(cx, cy + 14, 44, 18, 0, 0, Math.PI * 2); ctx.fill();
+  // Well walls
+  ctx.fillStyle = '#6a5c4c';
+  ctx.beginPath(); ctx.ellipse(cx, cy, 44, 18, 0, 0, Math.PI); ctx.fill();
+  ctx.fillRect(cx - 44, cy - 28, 88, 28);
+  ctx.fillStyle = '#5a4c3c';
+  ctx.beginPath(); ctx.ellipse(cx, cy - 28, 44, 18, 0, 0, Math.PI * 2); ctx.fill();
+  // Water
+  const wShimmer = Math.sin(t * 0.15) * 0.1;
+  ctx.fillStyle = `rgba(${(20)|0},${(60+wShimmer*40)|0},${(120+wShimmer*60)|0},0.9)`;
+  ctx.beginPath(); ctx.ellipse(cx, cy - 28, 38, 14, 0, 0, Math.PI * 2); ctx.fill();
+  // Water shimmer
+  ctx.strokeStyle = `rgba(100,180,255,${0.4 + wShimmer * 0.3})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.ellipse(cx, cy - 28, 22, 6, 0, 0, Math.PI * 2); ctx.stroke();
+  // Wooden crossbar
+  ctx.fillStyle = '#4a3020';
+  ctx.fillRect(cx - 48, cy - 50, 8, 28);
+  ctx.fillRect(cx + 40, cy - 50, 8, 28);
+  ctx.fillRect(cx - 48, cy - 54, 96, 8);
+  // Rope
+  ctx.strokeStyle = '#8a6a30'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(cx, cy - 46); ctx.lineTo(cx, cy - 28); ctx.stroke();
+  ctx.restore();
+}
+
+function drawGoblin(cx, cy, t) {
+  ctx.save();
+  const hop = Math.abs(Math.sin(t * 0.12)) * 4;
+  // Body
+  ctx.fillStyle = '#3a6a20';
+  ctx.beginPath(); ctx.ellipse(cx, cy - 10 - hop, 22, 28, 0, 0, Math.PI * 2); ctx.fill();
+  // Head
+  ctx.fillStyle = '#4a8028';
+  ctx.beginPath(); ctx.ellipse(cx, cy - 46 - hop, 20, 20, 0, 0, Math.PI * 2); ctx.fill();
+  // Ears
+  ctx.fillStyle = '#3a6a20';
+  ctx.beginPath(); ctx.moveTo(cx - 18, cy - 50 - hop); ctx.lineTo(cx - 28, cy - 64 - hop); ctx.lineTo(cx - 10, cy - 48 - hop); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx + 18, cy - 50 - hop); ctx.lineTo(cx + 28, cy - 64 - hop); ctx.lineTo(cx + 10, cy - 48 - hop); ctx.fill();
+  // Eyes
+  ctx.fillStyle = '#ffe040';
+  ctx.beginPath(); ctx.ellipse(cx - 7, cy - 48 - hop, 5, 6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx + 7, cy - 48 - hop, 5, 6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#1a0a00';
+  ctx.beginPath(); ctx.arc(cx - 7, cy - 48 - hop, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 7, cy - 48 - hop, 2, 0, Math.PI * 2); ctx.fill();
+  // Mouth / teeth
+  ctx.fillStyle = '#1a0a00';
+  ctx.beginPath(); ctx.arc(cx, cy - 38 - hop, 8, 0, Math.PI); ctx.fill();
+  ctx.fillStyle = '#e8e0d0';
+  ctx.fillRect(cx - 6, cy - 38 - hop, 4, 6);
+  ctx.fillRect(cx + 2, cy - 38 - hop, 4, 6);
+  // Arms
+  ctx.fillStyle = '#3a6a20';
+  ctx.fillRect(cx - 38, cy - 30 - hop, 16, 36);
+  ctx.fillRect(cx + 22, cy - 30 - hop, 16, 36);
+  // Legs
+  ctx.fillRect(cx - 18, cy + 14 - hop, 12, 32);
+  ctx.fillRect(cx + 6, cy + 14 - hop, 12, 32);
+  // Claws
+  ctx.fillStyle = '#1a3010';
+  for (let ci = 0; ci < 3; ci++) {
+    ctx.fillRect(cx - 36 + ci * 4, cy + 4 - hop, 3, 10);
+    ctx.fillRect(cx + 24 + ci * 4, cy + 4 - hop, 3, 10);
+  }
+  ctx.restore();
+}
+
+function drawDiamond(cx, cy, t) {
+  ctx.save();
+  const sparkle = Math.sin(t * 0.18) * 0.3 + 0.7;
+  const spin = (t * 0.03) % (Math.PI * 2);
+  ctx.translate(cx, cy - 20);
+  ctx.rotate(spin);
+  // Diamond body
+  const grad = ctx.createRadialGradient(0, 0, 2, 0, 0, 28);
+  grad.addColorStop(0, `rgba(200,240,255,${sparkle})`);
+  grad.addColorStop(0.3, `rgba(80,160,255,${sparkle})`);
+  grad.addColorStop(0.7, `rgba(20,80,200,${sparkle * 0.8})`);
+  grad.addColorStop(1, `rgba(0,20,80,0)`);
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(0, -28); ctx.lineTo(18, -8); ctx.lineTo(18, 8);
+  ctx.lineTo(0, 28); ctx.lineTo(-18, 8); ctx.lineTo(-18, -8);
+  ctx.closePath(); ctx.fill();
+  // Facet lines
+  ctx.strokeStyle = `rgba(180,220,255,${sparkle * 0.6})`;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, -28); ctx.lineTo(0, 28); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-18, -8); ctx.lineTo(18, 8); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-18, 8); ctx.lineTo(18, -8); ctx.stroke();
+  // Sparkles
+  ctx.fillStyle = `rgba(255,255,255,${sparkle})`;
+  for (let si = 0; si < 4; si++) {
+    const sa = (si / 4) * Math.PI * 2 + t * 0.1;
+    const sd = 36;
+    ctx.beginPath(); ctx.arc(Math.cos(sa) * sd, Math.sin(sa) * sd, 2, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawDoor(cx, cy, state, t) {
+  ctx.save();
+  const dw = 70, dh = 110;
+  const dx = cx - dw / 2, dy = cy - dh * 0.7;
+  // Door frame (stone)
+  ctx.fillStyle = '#4a3c2c';
+  ctx.fillRect(dx - 8, dy - 8, dw + 16, dh + 8);
+  // Door body
+  if (state === 1) ctx.fillStyle = '#5a3c20'; // locked: brown
+  else if (state === 2) ctx.fillStyle = '#1a0a00'; // unlocked dark
+  else ctx.fillStyle = '#8a5a28'; // open lit
+  ctx.fillRect(dx, dy, dw, dh);
+  // Planks
+  ctx.strokeStyle = state === 3 ? '#6a4218' : '#3a2410';
+  ctx.lineWidth = 2;
+  for (let pi = 0; pi < 4; pi++) {
+    ctx.beginPath(); ctx.moveTo(dx, dy + pi * 28); ctx.lineTo(dx + dw, dy + pi * 28); ctx.stroke();
+  }
+  // Lock icon (state=1)
+  if (state === 1) {
+    ctx.fillStyle = '#cc2020';
+    ctx.fillRect(cx - 10, cy - 24, 20, 18);
+    ctx.strokeStyle = '#cc2020'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(cx, cy - 32, 9, Math.PI, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#ff4040';
+    ctx.beginPath(); ctx.arc(cx, cy - 16, 4, 0, Math.PI * 2); ctx.fill();
+  }
+  // Dark state: faint torch glow beyond
+  if (state === 2) {
+    const grd = ctx.createRadialGradient(cx, cy - 20, 4, cx, cy - 20, 40);
+    grd.addColorStop(0, 'rgba(80,40,0,0.2)');
+    grd.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(dx, dy, dw, dh);
+  }
+  // Open state: golden light
+  if (state === 3) {
+    const grd = ctx.createRadialGradient(cx, cy - 20, 4, cx, cy - 20, 50);
+    grd.addColorStop(0, `rgba(255,200,60,${0.4 + Math.sin(t * 0.1) * 0.1})`);
+    grd.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grd;
+    ctx.fillRect(dx, dy, dw, dh);
+  }
+  ctx.restore();
+}
+
+// ── MINIMAP ───────────────────────────────────────────────────────────────────
+
+function drawMinimap() {
+  const mmX = W - 108, mmY = BBY + 8;
+  const mmW = 100, mmH = 100;
+  const S = mmW / 9;
+
+  ctx.fillStyle = 'rgba(0,0,0,0.85)';
+  ctx.fillRect(mmX - 2, mmY - 2, mmW + 4, mmH + 4);
+  ctx.strokeStyle = '#3a2a10';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(mmX - 2, mmY - 2, mmW + 4, mmH + 4);
+
+  // Grid cells — only show accessible rooms
+  for (let gx = 1; gx <= 9; gx++) {
+    for (let gy = 1; gy <= 9; gy++) {
+      let accessible = false;
+      for (let z = 1; z <= 4; z++) {
+        if (l1[gx][gy][z] > 0) { accessible = true; break; }
+      }
+      const px = mmX + (gx - 1) * S;
+      const py = mmY + (gy - 1) * S;
+      if (accessible) {
+        ctx.fillStyle = '#2a1e10';
+        ctx.fillRect(px + 0.5, py + 0.5, S - 1, S - 1);
+      }
+    }
+  }
+
+  // Player dot
+  const ppx = mmX + (x8 - 0.5) * S;
+  const ppy = mmY + (y8 - 0.5) * S;
+  ctx.fillStyle = '#ffd040';
+  ctx.beginPath(); ctx.arc(ppx, ppy, 3, 0, Math.PI * 2); ctx.fill();
+
+  // Direction arrow
+  const dirArrow = { 1:[0,-1], 2:[1,0], 3:[0,1], 4:[-1,0] }[z8];
+  ctx.strokeStyle = '#ffd040'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(ppx, ppy);
+  ctx.lineTo(ppx + dirArrow[0] * S * 0.8, ppy + dirArrow[1] * S * 0.8);
+  ctx.stroke();
+}
+
+// ── BOTTOM BAR ────────────────────────────────────────────────────────────────
+
+function drawBottomBar() {
+  // Background
+  ctx.fillStyle = '#100c08';
+  ctx.fillRect(BBX, BBY, BBW, BBH);
+  ctx.strokeStyle = '#3a2a10';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(BBX, BBY, BBW, BBH);
+
+  // Separator line
+  ctx.beginPath(); ctx.moveTo(BBX, BBY); ctx.lineTo(BBX + BBW, BBY); ctx.stroke();
+
+  // HP dots
+  ctx.fillStyle = '#8a2020';
+  ctx.font = '11px "Courier New", monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('HP', BBX + 12, BBY + 18);
+  for (let i = 0; i < 5; i++) {
+    const filled = i < hp;
+    ctx.fillStyle = filled ? '#cc3030' : '#2a1010';
+    ctx.beginPath(); ctx.arc(BBX + 40 + i * 18, BBY + 14, 7, 0, Math.PI * 2); ctx.fill();
+    if (filled) {
+      ctx.strokeStyle = '#ff6060'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(BBX + 40 + i * 18, BBY + 14, 7, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+
+  // Mana dots
+  ctx.fillStyle = '#2040a0';
+  ctx.fillText('MP', BBX + 12, BBY + 38);
+  for (let i = 0; i < 5; i++) {
+    const filled = i < mana;
+    ctx.fillStyle = filled ? '#4060d0' : '#101828';
+    ctx.beginPath(); ctx.arc(BBX + 40 + i * 18, BBY + 34, 7, 0, Math.PI * 2); ctx.fill();
+    if (filled) {
+      ctx.strokeStyle = '#80a0ff'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(BBX + 40 + i * 18, BBY + 34, 7, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+
+  // Message text
+  if (messageTimer > 0) {
+    const alpha = Math.min(1, messageTimer / 30);
+    ctx.fillStyle = `rgba(200,180,120,${alpha})`;
+    ctx.font = '12px "Courier New", monospace';
+    ctx.textAlign = 'left';
+    // Word-wrap at ~38 chars
+    const maxW = 240;
+    const words = message.split(' ');
+    let line = '', lines = [];
+    for (const w of words) {
+      const test = line ? line + ' ' + w : w;
+      if (ctx.measureText(test).width > maxW && line) {
+        lines.push(line); line = w;
+      } else { line = test; }
+    }
+    if (line) lines.push(line);
+    lines.forEach((l, i) => ctx.fillText(l, BBX + 12, BBY + 60 + i * 16));
+  }
+
+  // Inventory slots
+  const itemIcons = {
+    1: (x,y) => { ctx.fillStyle='#c03030'; ctx.beginPath(); ctx.arc(x,y,10,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#80c030'; ctx.fillRect(x-2,y-16,4,8); },
+    2: (x,y) => { ctx.fillStyle='#c0a020'; ctx.beginPath(); ctx.arc(x,y,10,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#e0c040'; ctx.font='10px Courier New'; ctx.textAlign='center'; ctx.fillText('$',x,y+4); },
+    3: (x,y) => { ctx.fillStyle='#e8d890'; ctx.fillRect(x-9,y-13,18,26); ctx.strokeStyle='#8a7030'; ctx.lineWidth=1; for(let i=0;i<4;i++){ ctx.beginPath(); ctx.moveTo(x-7,y-8+i*6); ctx.lineTo(x+7,y-8+i*6); ctx.stroke(); } },
+    4: (x,y) => { ctx.fillStyle='#180830'; ctx.beginPath(); ctx.moveTo(x,y-8); ctx.quadraticCurveTo(x-18,y-14,x-28,y); ctx.quadraticCurveTo(x-14,y+8,x,y+4); ctx.fill(); ctx.beginPath(); ctx.moveTo(x,y-8); ctx.quadraticCurveTo(x+18,y-14,x+28,y); ctx.quadraticCurveTo(x+14,y+8,x,y+4); ctx.fill(); },
+    5: (x,y) => { ctx.strokeStyle='#c0a020'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(x-4,y-4,6,0,Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x+2,y-4); ctx.lineTo(x+14,y-4); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x+10,y-4); ctx.lineTo(x+10,y+2); ctx.stroke(); },
+    6: (x,y) => { ctx.strokeStyle='#c0c0e0'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(x,y-14); ctx.lineTo(x,y+14); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x-10,y-4); ctx.lineTo(x+10,y-4); ctx.stroke(); },
+    7: (x,y) => { ctx.fillStyle='#4a2a10'; ctx.fillRect(x-4,y-14,8,28); ctx.fillStyle='#ff8020'; ctx.beginPath(); ctx.arc(x,y-14,8,Math.PI,Math.PI*2); ctx.fill(); ctx.fillStyle='#ffd060'; ctx.beginPath(); ctx.arc(x,y-14,4,Math.PI,Math.PI*2); ctx.fill(); }
+  };
+
+  for (let i = 0; i < 6; i++) {
+    const sl = INV_SLOTS[i];
+    const sel = (i === selectedSlot);
+    ctx.fillStyle = sel ? '#2a1e0e' : '#160e06';
+    ctx.fillRect(sl.x, sl.y, sl.w, sl.h);
+    ctx.strokeStyle = sel ? '#c0a030' : '#3a2a10';
+    ctx.lineWidth = sel ? 2 : 1;
+    ctx.strokeRect(sl.x, sl.y, sl.w, sl.h);
+    const item = batoh[i];
+    if (item > 0 && itemIcons[item]) {
+      ctx.save();
+      itemIcons[item](sl.x + sl.w / 2, sl.y + sl.h / 2);
+      ctx.restore();
+      // Item name tooltip on selected
+      if (sel) {
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.fillRect(sl.x - 2, sl.y - 18, 70, 16);
+        ctx.fillStyle = '#c0a030';
+        ctx.font = '9px "Courier New", monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(ITEM_NAMES[item], sl.x + 2, sl.y - 6);
+      }
+    }
+  }
+
+  // Minimap
+  drawMinimap();
+}
+
+// ── RIGHT PANEL ───────────────────────────────────────────────────────────────
+
+function drawRightPanel() {
+  ctx.fillStyle = '#0c0906';
+  ctx.fillRect(RPX, RPY, RPW, RPH);
+  ctx.strokeStyle = '#2a1a08';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(RPX, RPY, RPW, RPH);
+
+  // Spell buttons
+  const spellNames = ['Fire','Frze','Flsh','Deth','Move'];
+  const spellColors = ['#8a2010','#104a8a','#8a8010','#2a1040','#106a30'];
+  for (let i = 0; i < 5; i++) {
+    const btn = SPELL_BTN[i];
+    ctx.fillStyle = spellColors[i];
+    ctx.fillRect(btn.x, btn.y, btn.w, btn.h);
+    ctx.strokeStyle = '#4a3a20';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(btn.x, btn.y, btn.w, btn.h);
+    ctx.fillStyle = '#d0b080';
+    ctx.font = 'bold 9px "Courier New", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(spellNames[i], btn.x + btn.w / 2, btn.y + 11);
+    ctx.fillStyle = '#808080';
+    ctx.font = '8px "Courier New", monospace';
+    ctx.fillText(`[${i + 1}]`, btn.x + btn.w / 2, btn.y + 24);
+  }
+
+  // Nav buttons
+  for (const nb of NAV) {
+    ctx.fillStyle = '#1a1206';
+    ctx.fillRect(nb.x, nb.y, nb.w, nb.h);
+    ctx.strokeStyle = '#4a3a20';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(nb.x, nb.y, nb.w, nb.h);
+    ctx.fillStyle = '#c0a050';
+    ctx.font = 'bold 20px "Courier New", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(nb.label, nb.x + nb.w / 2, nb.y + nb.h / 2 + 8);
+  }
+
+  // Position readout
+  ctx.fillStyle = '#605040';
+  ctx.font = '9px "Courier New", monospace';
+  ctx.textAlign = 'left';
+  const dirNames = ['', 'N', 'E', 'S', 'W'];
+  ctx.fillText(`[${x8},${y8}] ${dirNames[z8]}`, RPX + 4, RPY + 152);
+
+  // Mana cost reminder
+  ctx.fillStyle = '#404060';
+  ctx.font = '8px "Courier New", monospace';
+  ctx.fillText('cost: 1  1  1  2  2', RPX + 4, RPY + 168);
+}
+
+// ── TITLE SCREEN ─────────────────────────────────────────────────────────────
+
+function renderTitle() {
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+
+  const t = performance.now() / 1000;
+  const fl = 0.82 + Math.sin(t * 6.3) * 0.06 + Math.sin(t * 14.7) * 0.02;
+
+  // Border
+  ctx.strokeStyle = `rgba(100,70,30,${fl * 0.6})`;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(20, 20, W - 40, H - 40);
+  ctx.strokeRect(26, 26, W - 52, H - 52);
+
+  // Title
+  ctx.shadowColor = `rgba(255,150,30,${fl * 0.9})`;
+  ctx.shadowBlur = 24;
+  ctx.fillStyle = `rgba(210,160,55,${fl})`;
+  ctx.font = 'bold 60px "Courier New", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('STONE TOWERS', W / 2, 130);
+
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = `rgba(160,200,120,${fl * 0.9})`;
+  ctx.font = 'bold 28px "Courier New", monospace';
+  ctx.fillText('— The Adventure —', W / 2, 185);
+
+  ctx.shadowBlur = 0;
+
+  // Story blurb
+  ctx.fillStyle = '#666';
+  ctx.font = '13px "Courier New", monospace';
+  ctx.fillText('Delve into the dungeon. Find the diamond.', W / 2, 230);
+  ctx.fillText('Unlock the door. Escape.', W / 2, 250);
+
+  // Press ENTER
+  const blink = Math.sin(t * 3) > 0;
+  ctx.fillStyle = blink ? '#aaa' : '#555';
+  ctx.font = '15px "Courier New", monospace';
+  ctx.fillText('— Press ENTER to begin —', W / 2, 310);
+
+  // Authors
+  ctx.fillStyle = '#333';
+  ctx.font = '11px "Courier New", monospace';
+  ctx.fillText('original game by  raist · ernie · dusty  |  web port powered by Claude AI', W / 2, H - 28);
+}
+
+// ── GAME OVER SCREEN ──────────────────────────────────────────────────────────
+
+function renderGameOver() {
+  ctx.fillStyle = 'rgba(0,0,0,0.85)';
+  ctx.fillRect(0, 0, W, H);
+
+  const t = performance.now() / 1000;
+  ctx.fillStyle = `rgba(180,30,20,${0.8 + Math.sin(t * 4) * 0.2})`;
+  ctx.font = 'bold 72px "Courier New", monospace';
+  ctx.textAlign = 'center';
+  ctx.shadowColor = '#ff0000';
+  ctx.shadowBlur = 30;
+  ctx.fillText('YOU DIED', W / 2, H / 2 - 20);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#555';
+  ctx.font = '15px "Courier New", monospace';
+  ctx.fillText('Press ENTER to try again', W / 2, H / 2 + 40);
+}
+
+// ── WIN SCREEN ────────────────────────────────────────────────────────────────
+
+function renderWin() {
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+
+  const t = performance.now() / 1000;
+  const fl = 0.8 + Math.sin(t * 5) * 0.15;
+
+  ctx.strokeStyle = `rgba(200,180,40,${fl * 0.6})`;
+  ctx.lineWidth = 3;
+  ctx.strokeRect(20, 20, W - 40, H - 40);
+
+  ctx.fillStyle = `rgba(220,200,60,${fl})`;
+  ctx.font = 'bold 64px "Courier New", monospace';
+  ctx.textAlign = 'center';
+  ctx.shadowColor = '#ffe060';
+  ctx.shadowBlur = 28;
+  ctx.fillText('VICTORY!', W / 2, 150);
+  ctx.shadowBlur = 0;
+
+  ctx.fillStyle = '#c0a040';
+  ctx.font = '18px "Courier New", monospace';
+  ctx.fillText('You escaped the Stone Towers.', W / 2, 215);
+
+  ctx.fillStyle = '#888';
+  ctx.font = '13px "Courier New", monospace';
+  ctx.fillText('The diamond glitters in your hand as you step into the light.', W / 2, 255);
+
+  ctx.fillStyle = '#555';
+  ctx.font = '13px "Courier New", monospace';
+  ctx.fillText('Press ENTER to play again', W / 2, 310);
+
+  ctx.fillStyle = '#333';
+  ctx.font = '11px "Courier New", monospace';
+  ctx.fillText('raist · ernie · dusty', W / 2, H - 28);
+
+  // Animated sparkles
+  for (let i = 0; i < 8; i++) {
+    const sa = (i / 8) * Math.PI * 2 + t * 0.5;
+    const sr = 80 + Math.sin(t * 2 + i) * 20;
+    const sx = W / 2 + Math.cos(sa) * sr;
+    const sy = 150 + Math.sin(sa) * sr * 0.4;
+    ctx.fillStyle = `rgba(255,220,60,${0.3 + Math.sin(t * 3 + i) * 0.3})`;
+    ctx.beginPath(); ctx.arc(sx, sy, 3, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+// ── INPUT ─────────────────────────────────────────────────────────────────────
+
+const keys = {};
+let prevKeys = {};
+
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (W / rect.width);
+  const my = (e.clientY - rect.top) * (H / rect.height);
+  handleClick(mx, my);
+});
+
+document.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+
+  if (gameState === 'title' && e.code === 'Enter') {
+    initGame(); gameState = 'game'; return;
+  }
+  if ((gameState === 'gameover' || gameState === 'win') && e.code === 'Enter') {
+    initGame(); gameState = 'game'; return;
+  }
+  if (gameState !== 'game') return;
+
+  // Movement keys
+  if (e.code === 'ArrowUp'   || e.code === 'KeyW') tryMove('forward');
+  if (e.code === 'ArrowDown' || e.code === 'KeyS') tryMove('back');
+  if (e.code === 'ArrowLeft' || e.code === 'KeyA') tryMove('turnLeft');
+  if (e.code === 'ArrowRight'|| e.code === 'KeyD') tryMove('turnRight');
+  if (e.code === 'KeyQ') tryMove('strafeLeft');
+  if (e.code === 'KeyE') tryMove('strafeRight');
+
+  // Spell keys 1-5
+  for (let i = 1; i <= 5; i++) {
+    if (e.code === `Digit${i}`) castSpell(i);
+  }
+
+  // Enter = interact
+  if (e.code === 'Enter') interact();
+});
+
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+
+function handleClick(mx, my) {
+  if (gameState === 'title') { initGame(); gameState = 'game'; return; }
+  if (gameState === 'gameover' || gameState === 'win') { initGame(); gameState = 'game'; return; }
+  if (gameState !== 'game') return;
+
+  // Scene area click → interact
+  if (mx >= SX && mx <= SX + SW && my >= SY && my <= SY + SH) {
+    interact();
+    return;
+  }
+
+  // Spell buttons
+  for (let i = 0; i < 5; i++) {
+    const btn = SPELL_BTN[i];
+    if (mx >= btn.x && mx <= btn.x + btn.w && my >= btn.y && my <= btn.y + btn.h) {
+      castSpell(i + 1); return;
+    }
+  }
+
+  // Nav buttons
+  for (const nb of NAV) {
+    if (mx >= nb.x && mx <= nb.x + nb.w && my >= nb.y && my <= nb.y + nb.h) {
+      tryMove(nb.action); return;
+    }
+  }
+
+  // Inventory slots
+  for (let i = 0; i < 6; i++) {
+    const sl = INV_SLOTS[i];
+    if (mx >= sl.x && mx <= sl.x + sl.w && my >= sl.y && my <= sl.y + sl.h) {
+      if (selectedSlot === i) {
+        useItem(i); selectedSlot = -1;
+      } else {
+        selectedSlot = i;
+        if (batoh[i] > 0) showMsg(`Selected: ${ITEM_NAMES[batoh[i]]}. Click again to use.`);
+      }
+      return;
+    }
+  }
+}
+
+// ── MAIN LOOP ─────────────────────────────────────────────────────────────────
+
+let lastTs = 0;
+
+function loop(ts) {
+  const dt = Math.min((ts - lastTs) / 1000, 0.05);
+  lastTs = ts;
+  tick++;
+
+  if (messageTimer > 0) messageTimer--;
+
+  if (gameState === 'title') {
+    renderTitle();
+  } else if (gameState === 'game') {
+    drawScene();
+    drawRightPanel();
+    drawBottomBar();
+  } else if (gameState === 'gameover') {
+    // Draw faded game behind
+    drawScene();
+    drawRightPanel();
+    drawBottomBar();
+    renderGameOver();
+  } else if (gameState === 'win') {
+    renderWin();
+  }
+
+  requestAnimationFrame(loop);
+}
+
+requestAnimationFrame(ts => { lastTs = ts; requestAnimationFrame(loop); });
+
+  </script>
+</body>
+</html>
