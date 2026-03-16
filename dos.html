@@ -204,7 +204,7 @@
       }).then(function() {
         document.getElementById('launch-screen').style.display = 'none';
         document.getElementById('dos-canvas').style.display    = 'block';
-        main(['-conf', 'dosbox.conf', '-c', 'mount c .', '-c', 'c:', '-c', 'call start.bat']);
+        main(['-conf', 'dosbox.conf']);
       });
     });
   }
