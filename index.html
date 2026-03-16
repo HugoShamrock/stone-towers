@@ -12,8 +12,12 @@
       max-width: 860px;
       padding: 16px 24px 48px;
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    @media (max-width: 700px) {
+      .games { grid-template-columns: repeat(2, 1fr); }
     }
 
     .card {
@@ -45,6 +49,10 @@
     .card-footer { margin-top: 14px; display: flex; justify-content: space-between; align-items: center; }
     .card-controls { font-size: 9px; color: #382810; letter-spacing: 1px; }
     .card-controls span { color: #5a3e18; }
+
+    .badge.wip { border-color: #3a2a0a; color: #5a4020; }
+    .card-wip { opacity: 0.55; }
+    .card-wip:hover { opacity: 0.7; }
 
     .play-btn {
       font-family: 'Courier New', monospace;
@@ -105,15 +113,13 @@
       <div class="badges">
         <span class="badge primary">first-person 3D</span>
         <span class="badge">raycasting</span>
-        <span class="badge">exploration</span>
       </div>
       <div class="card-desc">
-        Walk through a 20&times;20 stone maze in first-person view.
-        DDA raycasting engine based on the original <code>ENGINE.PAS</code> source.
-        Procedural stone textures, torch flicker, compass HUD.
+        First-person dungeon explorer. DDA raycasting engine
+        based on <code>ENGINE.PAS</code>. Procedural textures, torch flicker, compass.
       </div>
       <div class="card-footer">
-        <div class="card-controls"><span>WASD / ↑↓←→</span> move &nbsp; <span>M</span> map</div>
+        <div class="card-controls"><span>WASD</span> move &nbsp; <span>M</span> map</div>
         <button class="play-btn">PLAY →</button>
       </div>
     </a>
@@ -122,33 +128,14 @@
       <div class="card-header"><div class="card-title">The Adventure</div></div>
       <div class="badges">
         <span class="badge primary">point-and-click RPG</span>
-        <span class="badge">puzzles</span>
         <span class="badge">procedural gfx</span>
       </div>
       <div class="card-desc">
-        Navigate a dungeon, collect items, cast spells, solve puzzles.
-        Port of <code>STONET.PAS</code> with full inventory, HP&nbsp;/&nbsp;MP,
-        NPCs, animated enemies. Procedurally drawn graphics.
+        Dungeon RPG port of <code>STONET.PAS</code>. Inventory,
+        HP&nbsp;/&nbsp;MP, spells, NPCs. Procedurally drawn graphics.
       </div>
       <div class="card-footer">
-        <div class="card-controls"><span>WASD</span> move &nbsp; <span>1–5</span> spells &nbsp; <span>click</span> interact</div>
-        <button class="play-btn">PLAY →</button>
-      </div>
-    </a>
-
-    <a class="card" href="dos.html">
-      <div class="card-header"><div class="card-title">Original DOS<br><small style="font-size:12px;font-weight:normal;color:#6a5030">STONET.EXE, 1995</small></div></div>
-      <div class="badges">
-        <span class="badge primary">original executable</span>
-        <span class="badge special">DOSBox / WebAssembly</span>
-      </div>
-      <div class="card-desc">
-        The authentic 1995 DOS build running in the browser via js-dos (DOSBox compiled to WASM).
-        Full FLI intro &amp; outro, Sound Blaster FM music, all 129 VGA scenes &mdash;
-        exactly as it ran on MS-DOS.
-      </div>
-      <div class="card-footer">
-        <div class="card-controls"><span>mouse</span> interact &nbsp; <span>ESC</span> menu &nbsp; <span>F1–F10</span> actions</div>
+        <div class="card-controls"><span>WASD</span> move &nbsp; <span>click</span> interact</div>
         <button class="play-btn">PLAY →</button>
       </div>
     </a>
@@ -159,16 +146,31 @@
       </div>
       <div class="badges">
         <span class="badge primary">point-and-click RPG</span>
-        <span class="badge special">original 1995 artwork</span>
+        <span class="badge special">1995 artwork</span>
       </div>
       <div class="card-desc">
-        Same game, rendered with authentic VGA graphics from the DOS release.
-        129 GIF&nbsp;87a files loaded directly from the archive &mdash;
-        pixel art painted by the authors in 1995.
+        Same game with authentic 1995 VGA artwork —
+        129 GIF&nbsp;87a scenes painted by the original authors.
       </div>
       <div class="card-footer">
-        <div class="card-controls"><span>WASD</span> move &nbsp; <span>1–5</span> spells &nbsp; <span>click</span> interact</div>
+        <div class="card-controls"><span>WASD</span> move &nbsp; <span>click</span> interact</div>
         <button class="play-btn">PLAY →</button>
+      </div>
+    </a>
+
+    <a class="card card-wip" href="dos.html">
+      <div class="card-header"><div class="card-title">Original DOS<br><small style="font-size:12px;font-weight:normal;color:#4a3820">STONET.EXE, 1995</small></div></div>
+      <div class="badges">
+        <span class="badge">DOSBox / WASM</span>
+        <span class="badge wip">⚠ nefunkční</span>
+      </div>
+      <div class="card-desc">
+        Originální spustitelný soubor z roku 1995 přes js-dos
+        (DOSBox zkompilovaný do WebAssembly). Rozpracováno.
+      </div>
+      <div class="card-footer">
+        <div class="card-controls" style="color:#2a1e0c">work in progress</div>
+        <button class="play-btn" style="color:#2a1e0c;border-color:#1e1608">WIP</button>
       </div>
     </a>
 
