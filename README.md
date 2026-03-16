@@ -10,9 +10,9 @@ A Czech indie DOS game originally written in **Turbo Pascal 7** for MS-DOS, deve
 
 | Page | Type | Description |
 |------|------|-------------|
-| **Dungeon Walker** | First-person 3D | Explore a 20×20 stone maze. DDA raycasting engine based on `ENGINE.PAS`. |
-| **The Adventure** | Point-and-click RPG | Navigate a dungeon, collect items, cast spells, solve puzzles. Procedural graphics. |
-| **The Adventure — Original Graphics** | Point-and-click RPG | Same game, rendered with the authentic 1995 VGA artwork (129 GIF files from the original archive). |
+| [**Dungeon Walker**](https://hugoshamrock.github.io/stone-towers/walker.html) | First-person 3D | Explore a 20×20 stone maze. DDA raycasting engine based on `ENGINE.PAS`. |
+| [**The Adventure**](https://hugoshamrock.github.io/stone-towers/adventure.html) | Point-and-click RPG | Navigate a dungeon, collect items, cast spells, solve puzzles. Procedural graphics. |
+| [**The Adventure — Original Graphics**](https://hugoshamrock.github.io/stone-towers/original.html) | Point-and-click RPG | Same game, rendered with the authentic 1995 VGA artwork (129 GIF files from the original archive). |
 
 ### Archive
 
