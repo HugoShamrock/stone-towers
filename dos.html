@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Original DOS — Stone Towers</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .dos-wrap {
+      width: 100%;
+      max-width: 860px;
+      padding: 16px 24px 48px;
+    }
+
+    .dos-intro {
+      font-size: 11px;
+      color: #4a3a1e;
+      line-height: 1.8;
+      margin-bottom: 20px;
+      max-width: 660px;
+    }
+
+    .dos-container {
+      background: #000;
+      border: 1px solid #2a1e0c;
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4/3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    #dos-canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    .dos-launch {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .dos-launch-title {
+      font-size: 11px;
+      color: #4a3a1e;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    #launch-btn {
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      color: #c8a030;
+      background: none;
+      border: 1px solid #6a4c18;
+      padding: 12px 32px;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s, box-shadow 0.15s;
+    }
+
+    #launch-btn:hover {
+      color: #e0b840;
+      border-color: #c8a030;
+      box-shadow: 0 0 20px rgba(200,140,20,0.2);
+    }
+
+    .dos-status {
+      font-size: 10px;
+      color: #3a2c14;
+      letter-spacing: 1px;
+      min-height: 16px;
+      text-align: center;
+    }
+
+    .dos-progress {
+      width: 240px;
+      height: 2px;
+      background: #0e0a04;
+      border: 1px solid #1a1206;
+      overflow: hidden;
+      display: none;
+    }
+
+    .dos-progress-bar {
+      height: 100%;
+      background: #6a4c18;
+      width: 0%;
+      transition: width 0.2s;
+    }
+
+    .dos-hints {
+      margin-top: 16px;
+      padding: 12px 16px;
+      border: 1px solid #1a1206;
+      background: #0a0806;
+      font-size: 10px;
+      color: #3a2c14;
+      line-height: 2;
+      letter-spacing: 1px;
+      max-width: 480px;
+    }
+
+    .dos-hints b { color: #5a4020; }
+
+    .dos-note {
+      margin-top: 12px;
+      font-size: 10px;
+      color: #2e2210;
+      line-height: 1.7;
+      max-width: 480px;
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a class="logo" href="index.html">STONE TOWERS</a>
+    <div class="tagline">czech dungeon crawler &nbsp;·&nbsp; original 1995 &nbsp;·&nbsp; web port 2025</div>
+  </header>
+
+  <div class="back-link"><a href="index.html">← back to hub</a></div>
+
+  <p class="section-title">— original DOS version —</p>
+
+  <div class="dos-wrap">
+
+    <p class="dos-intro">
+      The original <code>STONET.EXE</code> compiled in 1995, running in the browser via
+      <strong style="color:#6a4c18">DOSBox-X / js-dos</strong> (WebAssembly). Includes the intro and
+      outro FLI animations, original Sound Blaster FM music, and all 129 VGA scenes — exactly as it ran on MS-DOS.
+    </p>
+
+    <div class="dos-container">
+      <div class="dos-launch" id="launch-screen">
+        <div class="dos-launch-title">Stone Towers &mdash; 1995 MS-DOS</div>
+        <button id="launch-btn" onclick="startDos()">▶ LAUNCH</button>
+        <div class="dos-progress" id="dos-progress">
+          <div class="dos-progress-bar" id="dos-progress-bar"></div>
+        </div>
+        <div class="dos-status" id="dos-status">click to load (~3 MB)</div>
+      </div>
+      <canvas id="dos-canvas" style="display:none"></canvas>
+    </div>
+
+    <div class="dos-hints">
+      <b>Controls (original DOS):</b><br>
+      Mouse — navigate menus and interact with scenes<br>
+      Arrow keys — movement in some screens<br>
+      ESC — back / exit menu<br>
+      F1–F10 — game functions (inventory, spells, etc.)<br>
+      <br>
+      <b>Tip:</b> click the canvas to capture mouse input
+    </div>
+
+    <p class="dos-note">
+      Runs via <a href="https://js-dos.com" target="_blank" style="color:#4a3616;text-decoration:none">js-dos</a>
+      (DOSBox compiled to WebAssembly). Sound may not work in all browsers.
+      For best results use Chrome or Firefox on desktop.
+    </p>
+
+  </div>
+
+  <footer>
+    <div class="footer-left">
+      original game &copy; <b>raist</b> &nbsp;·&nbsp; <b>ernie</b> &nbsp;·&nbsp; <b>dusty</b>
+    </div>
+    <div class="footer-right">
+      <a href="index.html">hub</a>
+      <span class="footer-sep">·</span>
+      <a href="README.md">README</a>
+      <span class="footer-sep">·</span>
+      <a href="TODO.md">TODO</a>
+      <span class="footer-sep">·</span>
+      <a href="https://github.com/HugoShamrock/stone-towers" target="_blank">GitHub</a>
+    </div>
+  </footer>
+
+  <script src="https://js-dos.com/6.22/current/js-dos.js"></script>
+  <script>
+  function startDos() {
+    const btn      = document.getElementById('launch-btn');
+    const status   = document.getElementById('dos-status');
+    const progress = document.getElementById('dos-progress');
+    const pbar     = document.getElementById('dos-progress-bar');
+
+    btn.disabled = true;
+    btn.textContent = 'LOADING…';
+    progress.style.display = 'block';
+    status.textContent = 'downloading game files…';
+
+    Dos(document.getElementById('dos-canvas'), {
+      wdosboxUrl: 'https://js-dos.com/6.22/current/wdosbox.js'
+    }).ready(function(fs, main) {
+      status.textContent = 'loading filesystem…';
+      fs.extract('stonet-dos.zip', function(e) {
+        pbar.style.width = Math.round(e * 100) + '%';
+      }).then(function() {
+        document.getElementById('launch-screen').style.display = 'none';
+        document.getElementById('dos-canvas').style.display    = 'block';
+        main(['-conf', 'dosbox.conf', '-c', 'mount c .', '-c', 'c:', '-c', 'call start.bat']);
+      });
+    });
+  }
+  </script>
+
+</body>
+</html>
