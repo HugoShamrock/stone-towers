@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gallery — Stone Towers</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .gallery-section {
+      width: 100%;
+      max-width: 860px;
+      padding: 16px 24px 40px;
+    }
+
+    .gallery-hero {
+      width: 100%;
+      border: 1px solid #1e1608;
+      margin-bottom: 14px;
+      display: block;
+      image-rendering: pixelated;
+    }
+
+    /* Stone Towers II */
+    .st2-intro {
+      font-size: 11px;
+      color: #5a4820;
+      line-height: 1.8;
+      margin-bottom: 16px;
+      max-width: 660px;
+    }
+
+    .st2-chars {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .st2-char {
+      background: #0a0806;
+      border: 1px solid #1a1206;
+      overflow: hidden;
+      transition: border-color 0.15s;
+    }
+
+    .st2-char:hover { border-color: #3a2810; }
+
+    .st2-char img {
+      width: 100%;
+      display: block;
+      image-rendering: pixelated;
+      background: #050402;
+    }
+
+    .st2-char .char-label {
+      padding: 5px 8px;
+      font-size: 9px;
+      color: #3a2c14;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .st2-screens {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 8px;
+    }
+
+    .st2-screen {
+      background: #0a0806;
+      border: 1px solid #1a1206;
+      overflow: hidden;
+      transition: border-color 0.15s;
+    }
+
+    .st2-screen:hover { border-color: #3a2810; }
+
+    .st2-screen img {
+      width: 100%;
+      display: block;
+      image-rendering: pixelated;
+      background: #050402;
+    }
+
+    .st2-screen .screen-label {
+      padding: 5px 8px;
+      font-size: 9px;
+      color: #3a2c14;
+      letter-spacing: 1px;
+    }
+
+    @media (max-width: 600px) {
+      .st2-chars { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a class="logo" href="index.html">STONE TOWERS</a>
+    <div class="tagline">czech dungeon crawler &nbsp;·&nbsp; original 1995 &nbsp;·&nbsp; web port 2025</div>
+  </header>
+
+  <div class="back-link"><a href="index.html">← back to hub</a></div>
+
+  <!-- ── STONET1 BMP ARTWORK ── -->
+  <p class="section-title">— original artwork — stonet1 —</p>
+
+  <div class="gallery-section">
+    <div class="gallery-subtitle">BMP sprite sheets &nbsp;·&nbsp; 8-bit VGA palettized &nbsp;·&nbsp; 1995</div>
+
+    <img class="gallery-hero"
+         src="original-dos/stonet1/BMP/STARTMSC.BMP"
+         alt="Stone Towers title screen (STARTMSC.BMP, 491×248)"
+         title="STARTMSC.BMP — title / menu art, 491×248">
+
+    <div class="gallery-grid">
+      <div class="gallery-item">
+        <img src="original-dos/stonet1/BMP/MONST1.BMP" alt="Monster sprites 1" title="MONST1.BMP — 224×360">
+        <div class="img-caption">MONST1 &mdash; monsters <span class="img-dim">224×360</span></div>
+      </div>
+      <div class="gallery-item">
+        <img src="original-dos/stonet1/BMP/MONST2.BMP" alt="Monster sprites 2" title="MONST2.BMP — 168×360">
+        <div class="img-caption">MONST2 &mdash; monsters <span class="img-dim">168×360</span></div>
+      </div>
+      <div class="gallery-item">
+        <img src="original-dos/stonet1/BMP/PCS.BMP" alt="Character sprites" title="PCS.BMP — 224×216">
+        <div class="img-caption">PCS &mdash; characters <span class="img-dim">224×216</span></div>
+      </div>
+      <div class="gallery-item">
+        <img src="original-dos/stonet1/BMP/ITEM.BMP" alt="Item sprites" title="ITEM.BMP — 168×144">
+        <div class="img-caption">ITEM &mdash; items <span class="img-dim">168×144</span></div>
+      </div>
+      <div class="gallery-item">
+        <img src="original-dos/stonet1/BMP/MIXED.BMP" alt="Mixed sprites" title="MIXED.BMP — 174×229">
+        <div class="img-caption">MIXED &mdash; misc <span class="img-dim">174×229</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ── STONET2 ARTWORK ── -->
+  <p class="section-title">— original artwork — stonet2 —</p>
+
+  <div class="gallery-section">
+
+    <p class="st2-intro">
+      Stone Towers II (1998–1999) used an entirely new engine for 640×480 VGA.
+      These are the surviving GIF assets: four character selection portraits
+      and a full set of game screens painted for the new version.
+    </p>
+
+    <div class="gallery-subtitle" style="margin-bottom:10px">character portraits &nbsp;·&nbsp; 320×200 GIF &nbsp;·&nbsp; January 1999</div>
+    <div class="st2-chars">
+      <div class="st2-char">
+        <img src="original-dos/stonet2/CHB1.GIF" alt="Character I">
+        <div class="char-label">Character I</div>
+      </div>
+      <div class="st2-char">
+        <img src="original-dos/stonet2/CHB2.GIF" alt="Character II">
+        <div class="char-label">Character II</div>
+      </div>
+      <div class="st2-char">
+        <img src="original-dos/stonet2/CHB3.GIF" alt="Character III">
+        <div class="char-label">Character III</div>
+      </div>
+      <div class="st2-char">
+        <img src="original-dos/stonet2/CHB4.GIF" alt="Character IV">
+        <div class="char-label">Character IV</div>
+      </div>
+    </div>
+
+    <div class="gallery-subtitle" style="margin-top:8px">game screens &nbsp;·&nbsp; 320×200 GIF &nbsp;·&nbsp; December 1998 – January 1999</div>
+    <div class="st2-screens">
+      <div class="st2-screen">
+        <img src="original-dos/stonet2/B.GIF" alt="Main screen">
+        <div class="screen-label">B.GIF &mdash; main screen</div>
+      </div>
+      <div class="st2-screen">
+        <img src="original-dos/stonet2/L.GIF" alt="Level / dungeon">
+        <div class="screen-label">L.GIF &mdash; dungeon</div>
+      </div>
+      <div class="st2-screen">
+        <img src="original-dos/stonet2/P.GIF" alt="Player / combat">
+        <div class="screen-label">P.GIF &mdash; combat</div>
+      </div>
+      <div class="st2-screen">
+        <img src="original-dos/stonet2/1.GIF" alt="Scene 1">
+        <div class="screen-label">1.GIF</div>
+      </div>
+      <div class="st2-screen">
+        <img src="original-dos/stonet2/2.GIF" alt="Scene 2">
+        <div class="screen-label">2.GIF</div>
+      </div>
+      <div class="st2-screen">
+        <img src="original-dos/stonet2/3.GIF" alt="Scene 3">
+        <div class="screen-label">3.GIF</div>
+      </div>
+      <div class="st2-screen">
+        <img src="original-dos/stonet2/4.GIF" alt="Scene 4">
+        <div class="screen-label">4.GIF</div>
+      </div>
+      <div class="st2-screen">
+        <img src="original-dos/stonet2/PAN1.GIF" alt="UI panel 1">
+        <div class="screen-label">PAN1.GIF &mdash; UI panel</div>
+      </div>
+      <div class="st2-screen">
+        <img src="original-dos/stonet2/PAN2.GIF" alt="UI panel 2">
+        <div class="screen-label">PAN2.GIF &mdash; UI panel</div>
+      </div>
+      <div class="st2-screen">
+        <img src="original-dos/stonet2/3DDESKA0.GIF" alt="3D board prototype 1996">
+        <div class="screen-label">3DDESKA0.GIF &mdash; 3D prototype (1996)</div>
+      </div>
+      <div class="st2-screen">
+        <img src="original-dos/stonet2/3DDESKA1.GIF" alt="3D board prototype 1997">
+        <div class="screen-label">3DDESKA1.GIF &mdash; 3D prototype (1997)</div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    <div class="footer-left">
+      original game &copy; <b>raist</b> &nbsp;·&nbsp; <b>ernie</b> &nbsp;·&nbsp; <b>dusty</b>
+    </div>
+    <div class="footer-right">
+      <a href="index.html">hub</a>
+      <span class="footer-sep">·</span>
+      <a href="README.md">README</a>
+      <span class="footer-sep">·</span>
+      <a href="TODO.md">TODO</a>
+      <span class="footer-sep">·</span>
+      <a href="https://github.com/HugoShamrock/stone-towers" target="_blank">GitHub</a>
+    </div>
+  </footer>
+
+</body>
+</html>

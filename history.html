@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>History — Stone Towers</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* ── TIMELINE ── */
+    .timeline-section {
+      width: 100%;
+      max-width: 860px;
+      padding: 16px 24px 48px;
+    }
+
+    .timeline {
+      position: relative;
+      padding-left: 80px;
+    }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 56px;
+      top: 4px;
+      bottom: 4px;
+      width: 1px;
+      background: #1e1608;
+    }
+
+    .tl-entry {
+      position: relative;
+      margin-bottom: 32px;
+    }
+
+    .tl-entry::before {
+      content: '';
+      position: absolute;
+      left: -28px;
+      top: 5px;
+      width: 5px;
+      height: 5px;
+      background: #3a2810;
+      border: 1px solid #5a3e18;
+    }
+
+    .tl-year {
+      position: absolute;
+      left: -78px;
+      top: 2px;
+      font-size: 10px;
+      font-weight: bold;
+      color: #5a3e18;
+      letter-spacing: 1px;
+      width: 42px;
+      text-align: right;
+    }
+
+    .tl-title {
+      font-size: 13px;
+      font-weight: bold;
+      color: #7a5a20;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+
+    .tl-body {
+      font-size: 11px;
+      color: #4a3a1e;
+      line-height: 1.8;
+    }
+
+    .tl-files {
+      margin-top: 7px;
+      font-size: 9px;
+      color: #3a2c14;
+      letter-spacing: 1px;
+    }
+
+    .tl-files code {
+      color: #4a3818;
+      background: #0c0a04;
+      padding: 1px 4px;
+    }
+
+    /* ── STONET2 ── */
+    .st2-section {
+      width: 100%;
+      max-width: 860px;
+      padding: 16px 24px 48px;
+    }
+
+    .st2-intro {
+      font-size: 12px;
+      color: #5a4820;
+      line-height: 1.9;
+      margin-bottom: 16px;
+      max-width: 680px;
+    }
+
+    .st2-builds {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .st2-build {
+      font-size: 9px;
+      letter-spacing: 1px;
+      padding: 3px 8px;
+      border: 1px solid #1e1608;
+      color: #4a3818;
+    }
+
+    @media (max-width: 600px) {
+      .timeline { padding-left: 60px; }
+      .tl-year  { left: -58px; width: 34px; font-size: 9px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a class="logo" href="index.html">STONE TOWERS</a>
+    <div class="tagline">czech dungeon crawler &nbsp;·&nbsp; original 1995 &nbsp;·&nbsp; web port 2025</div>
+  </header>
+
+  <div class="back-link"><a href="index.html">← back to hub</a></div>
+
+  <!-- ── TIMELINE ── -->
+  <p class="section-title">— development timeline —</p>
+
+  <div class="timeline-section">
+    <div class="timeline">
+
+      <div class="tl-entry">
+        <div class="tl-year">1992</div>
+        <div class="tl-title">First prototype</div>
+        <div class="tl-body">
+          The earliest surviving builds. An animated game sequence, outro, and raycasting
+          engine already exist by December — suggesting the core DDA renderer and game loop
+          were functional from the very start.
+        </div>
+        <div class="tl-files">
+          <code>GAME6.FLI</code> &nbsp; <code>ANIMACE2.FLI</code> &nbsp; <code>GM_OUT.FLI</code>
+        </div>
+      </div>
+
+      <div class="tl-entry">
+        <div class="tl-year">1995</div>
+        <div class="tl-title">The Adventure — main development</div>
+        <div class="tl-body">
+          The game's definitive year. 129 GIF87a scenes are painted at 320×200 and form the
+          complete dungeon artwork for <em>The Adventure</em>. The story manuscript
+          <em>STONETOW.ERS</em> is written — a Czech poem about the land of Torwen, sorcerer
+          Ragon, six monks, and three lost crystals — signed <em>(c) 1995 WIZ</em>.
+          BMP sprite sheets for monsters, items, and characters are finalized.
+          <code>STONET.EXE</code> is compiled.
+        </div>
+        <div class="tl-files">
+          <code>STONET/</code> (129 GIFs) &nbsp; <code>STONETOW.ERS</code> &nbsp;
+          <code>BMP/*.BMP</code> &nbsp; <code>GM_FLI2.FLI</code>
+        </div>
+      </div>
+
+      <div class="tl-entry">
+        <div class="tl-year">1996</div>
+        <div class="tl-title">Engine iteration &amp; 3D experiments</div>
+        <div class="tl-body">
+          162 Pascal source files in <code>PAS/</code> (versions 73–264) document active,
+          step-by-step iteration of both the rendering engine and game logic.
+          Separately, the <em>lostGFX</em> graphics library for 640×480×256 VGA is written,
+          alongside an early 3D board prototype — the first sign of what will become
+          Stone Towers II.
+        </div>
+        <div class="tl-files">
+          <code>PAS/</code> (162 files, ver. 73–264) &nbsp; <code>stonet2/3DDESKA0.GIF</code>
+        </div>
+      </div>
+
+      <div class="tl-entry">
+        <div class="tl-year">1997</div>
+        <div class="tl-title">Demo &amp; new FX animations</div>
+        <div class="tl-body">
+          New animated effects — a looping crystal and a water sequence — are produced for
+          planned dungeon scenes in <code>WIZ/NEW10</code> and <code>WIZ/NEW11</code>.
+          In March, a game demo animation is recorded: the last known stonet1 artifact,
+          suggesting a public demo was planned but never shipped.
+        </div>
+        <div class="tl-files">
+          <code>CRYSTAL.FLI</code> &nbsp; <code>STONWAT.FLI</code> &nbsp;
+          <code>DEMO.FLI</code> &nbsp; <code>stonet2/3DDESKA1.GIF</code>
+        </div>
+      </div>
+
+      <div class="tl-entry">
+        <div class="tl-year">1998–99</div>
+        <div class="tl-title">Stone Towers II — new engine</div>
+        <div class="tl-body">
+          Development restarts from scratch. A new engine targets 640×480 with
+          CEL-format sprites (64 KB each). Seven distinct executable builds survive
+          (230X through 453X). A full set of character portraits and game screens is
+          painted in GIF. An AVI clip (<code>ANIMACKA.AVI</code>, 1.6 MB) is recorded.
+          The project ends unreleased in early 1999.
+        </div>
+        <div class="tl-files">
+          <code>stonet2/*.GIF</code> &nbsp; <code>stonet2/ANIMACKA.AVI</code> &nbsp;
+          <code>stonet2/*.EXE</code> (7 builds)
+        </div>
+      </div>
+
+      <div class="tl-entry">
+        <div class="tl-year">2025</div>
+        <div class="tl-title">Web port — published with authors' permission</div>
+        <div class="tl-body">
+          The original source code is archived on GitHub. Three web ports are published
+          and the archive is made accessible in the browser — with the assistance of
+          Claude AI — completing the gameplay that was never finished.
+        </div>
+        <div class="tl-files">
+          <code>walker.html</code> &nbsp; <code>adventure.html</code> &nbsp;
+          <code>original.html</code> &nbsp; <code>story.html</code> &nbsp;
+          <code>gallery.html</code> &nbsp; <code>animations.html</code>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ── STONE TOWERS II ── -->
+  <p class="section-title">— stone towers II —</p>
+
+  <div class="st2-section">
+
+    <p class="st2-intro">
+      Stone Towers II is a completely independent reimagining begun in late 1998 — nearly
+      two years after stonet1 development ended. It used an entirely new engine targeting
+      640×480 in 256-color mode, with CEL-format sprites (64 KB each) replacing the
+      GIF-based scene system of the original.
+    </p>
+
+    <p class="st2-intro">
+      Seven distinct executable builds survive in the archive, version-numbered 230X through
+      453X, documenting active iteration through early 1999. The new artwork — four character
+      selection portraits and a set of game screens — shows the visual direction the sequel
+      was taking. An AVI clip (<code>ANIMACKA.AVI</code>) was recorded, likely as a cutscene
+      or intro. The project was never released.
+    </p>
+
+    <p class="st2-intro" style="color:#3a2c14">
+      Surviving executable builds:
+    </p>
+    <div class="st2-builds">
+      <div class="st2-build">230X.EXE</div>
+      <div class="st2-build">237X.EXE</div>
+      <div class="st2-build">402X.EXE</div>
+      <div class="st2-build">450X.EXE</div>
+      <div class="st2-build">451X.EXE</div>
+      <div class="st2-build">452X.EXE</div>
+      <div class="st2-build">453X.EXE</div>
+    </div>
+
+  </div>
+
+  <footer>
+    <div class="footer-left">
+      original game &copy; <b>raist</b> &nbsp;·&nbsp; <b>ernie</b> &nbsp;·&nbsp; <b>dusty</b>
+    </div>
+    <div class="footer-right">
+      <a href="index.html">hub</a>
+      <span class="footer-sep">·</span>
+      <a href="README.md">README</a>
+      <span class="footer-sep">·</span>
+      <a href="TODO.md">TODO</a>
+      <span class="footer-sep">·</span>
+      <a href="https://github.com/HugoShamrock/stone-towers" target="_blank">GitHub</a>
+    </div>
+  </footer>
+
+</body>
+</html>
