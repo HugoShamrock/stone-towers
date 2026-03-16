@@ -1,0 +1,110 @@
+
+
+
+              *** €esk‚ fonty pro  Turbo PASCAL ***
+                 ------------------------------
+                 (c) Borland International Ltd.
+                 diakritika (c) OCSoftware 1989
+
+
+  Firma Borland  dod v  fonty zdarma  a povoluje jejich  pou‘it¡ v
+libovoln˜ch programech, i prodej tˆchto program– spole‡nˆ s fonty.
+Po‘aduje v¨ak  splnˆn¡ dvou podm¡nek  : fonty nesm¡  b˜t prod v ny
+samostatnˆ,  a  programy,  kter‚  je  pou‘¡vaj¡,  mus¡ m¡t validn¡
+copyright,  kter˜  obsahuje  klausuli  "Created  Using" (nebo jej¡
+‡esk˜ ekvivalent), n sledovanou seznamem prost©edk– firmy Borland,
+kter‚ byly p©i v˜voji programu pou‘ity.
+
+  Podobnˆ OCSoftware  dod v  ‡eskou mutaci  font– zdarma; po‘aduje
+pouze, aby copyright programu  obsahoval klausuli "€esk‚ fonty (c)
+OCSoftware".
+
+                            --- * ---
+
+  Disketa obsahuje n sleduj¡c¡ soubory :
+
+README ........ tento text
+
+FONTTEST.PAS .. jednoduch˜ p©¡klad pou‘it¡ font– v Turbo PASCALu
+
+EURO.CHR ...... vlastn¡ fonty
+LCOM.CHR
+LITT.CHR
+SANS.CHR
+SCRI.CHR
+SIMP.CHR
+
+                            --- * ---
+
+  K ‡esk˜m  font–m je nav¡c  dod v n jednoduch˜ testovac¡  program
+FONTTEST, kter˜ je ur‡en k prohl‚dnut¡ tvar– font–. Jeho vol n¡ je
+n sleduj¡c¡ :
+
+FONTTEST [/<adres © s BGI driverem>] <jm‚no font souboru> <text>
+
+  Program  p©epne do  grafick‚ho m¢du  a zobraz¡  jm‚no souboru  s
+fontem a  zadan˜ text v  po‘adovan‚m fontu. Text  je mo‘n‚ zvˆt¨it
+stisknut¡m  kl vesy  |+|  nebo  zmen¨it  stisknut¡m  kl vesy  |-|.
+Program se ukon‡¡ stisknut¡m kl vesy |Esc|.
+
+  Nen¡-li na aktu ln¡m adres ©i driver  *.BGI, je nutn‚ zadat jako
+prvn¡  parametr  za  lom¡tkem  jeho  adres ©.  Je  v¨ak  nutn‚  si
+uvˆdomit,  ‘e  driver  nejprve  hled   soubor  s  fontem  na tomto
+adres ©i a a‘ pak na aktu ln¡m.
+
+                            --- * ---
+
+  Fonty je  nutno  nejprve  instalovat pomoc¡  funkce
+
+installuserfont( <jm‚no souboru> )
+
+kter   vr t¡   ‡¡slo  fontu.  Toto  ‡¡slo   se  pak  zad   slu‘bˆ
+'settextstyle' na m¡stˆ parametru <jm‚no fontu>.
+
+  Fonty  se  pak  pou‘¡vaj¡  standardn¡m zp–sobem prost©ednictv¡m
+slu‘eb 'outtext', 'outtextxy'.
+
+                            --- * ---
+
+  Ulo‘en¡ ‡esk˜ch znak– ve  fontech odpov¡d  (stejnˆ jako ‡e¨tina,
+kterou  je  ps n  tento  soubor)  nejroz¨¡©enˆj¨¡  konvenci bratr–
+Kamenick˜ch :
+
+          1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16
+        ÉÍÍÑÍÍÑÍÍÑÍÍÑÍÍÑÍÍÑÍÍÑÍÍÑÍÍÑÍÍÑÍÍÑÍÍÑÍÍÑÍÍÑÍÍÑÍÍ»
+    128 º €³  ³ ‚³ ƒ³  ³ …³ †³ ‡³ ˆ³ ‰³  ³  ³  ³  ³  ³ º 80H
+        ÇÄÄÅÄÄÅÄÄÅÄÄÅÄÄÅÄÄÅÄÄÅÄÄÅÄÄÅÄÄÅÄÄÅÄÄÅÄÄÅÄÄÅÄÄÅÄÄ¶
+    144 º ³ ‘³ ’³  ³  ³ •³ –³ —³ ˜³  ³  ³ ›³  ³ ³ ³ Ÿº 90H
+        ÇÄÄÅÄÄÅÄÄÅÄÄÅÄÄÅÄÄÅÄÄÅÄÄÅÄÄÅÄÄÅÄÄÅÄÄÅÄÄÅÄÄÅÄÄÅÄÄ¶
+    160 º  ³ ¡³ ¢³ £³ ¤³ ¥³ ¦³  ³ ¨³ ©³  ³  ³  ³  ³  ³  º A0H
+        ÈÍÍÏÍÍÏÍÍÏÍÍÏÍÍÏÍÍÏÍÍÏÍÍÏÍÍÏÍÍÏÍÍÏÍÍÏÍÍÏÍÍÏÍÍÏÍÍ¼
+         00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
+
+                            --- * ---
+
+  Pokud  V m  z  nˆjak‚ho  d–vodu  ‡esk‚  fonty nefunguj¡, pi¨te,
+pros¡m, na adresu
+
+OCSoftware
+RNDr. Ond©ej €ada
+Pernerova 61
+186 00  PRAHA 8
+
+  V dopise uveƒte :
+
+- versi pou‘it‚ho p©eklada‡e
+- pou‘it˜ grafick˜ adapt‚r (CGA, EGA, VGA, ...)
+- pou‘it˜ font
+- popis  chyby a  situace (nejl‚pe  £sek programu),  ve kter‚  se
+chyba projevuje.
+
+
+  Jestli‘e V m ‡esk‚ fonty pro Turbo PASCAL uspo©ily ‡as a pr ci a
+jste-li  s nimi  spokojeni,  za¨lete,  pros¡m, na  uvedenou adresu
+dobrovoln˜ poplatek 25.- K‡s. Uvedete-li nav¡c svou adresu, budeme
+V s moci  informovat o dal¨¡  nab¡dce softwarov˜ch prost©edk–  pro
+IBM  PC   a  akceptovat  Va¨e   eventu ln¡  p©ipom¡nky  k   tvar–m
+diakritick˜ch znam‚nek nebo znak– font–.
+
+                                           OCSoftware
+

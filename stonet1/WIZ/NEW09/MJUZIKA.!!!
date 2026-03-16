@@ -1,0 +1,23 @@
+  CMF do TP
+
+ Konverze z MIDu na ROLy a pak z ROLu na CMF.
+ --------------------------------------------
+ - MIDi na ROL
+
+   mf2rol.exe (midifile) <configfile>
+
+
+ - ROL na CMF
+   
+   rol2cmf.exe (rolfile.rol) (cmffile.cmf) /bC:\SBIbankpath
+   
+   u me mam SBIbankpath:=music\convert\sbi
+   Z tohoto adresare se vybiraji nastroje SBI pro konverzi.
+
+
+ -  Playall.exe (mid pak cmf ,pro porovnani)   
+
+
+ - V Turbo Paskalu:
+   Instalovat SBFMDRV.COM
+   Vyuzit myho CMFplay

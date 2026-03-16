@@ -1,0 +1,93 @@
+Unit GMKey55; { identifikace stisku klavesnice }
+Interface
+
+{******************************************************************
+ *  Unit GMKey :  Rozsireni funkci "ReadKey" a "KeyPressed"       *
+ *                z modulu CRT na rizeni pomoci mysi ovladane     *
+ *                ovladacem GMOUSE (Mouse Systems, Genius Mouse). *
+ *  GMKEY55.TPU   prelozeno pomoci TurboPascalu verze 55          *
+ *  GMKEY6.TPU    prelozeno pomoci TurboPascalu verze 6           *
+ *  GMKEY7.TPU    prelozeno pomoci TurboPascalu verze 7           *
+ *                                                                *
+ *  ing.Jiri ZARA, CSc.                                  17.11.94 *
+ ******************************************************************
+
+
+Informace:
+---------
+ Po zarazeni modulu GMKey do direktivy USES muze uzivatel pouzivat funkce
+ "ReadKey" a "KeyPressed" nejen pro vstup z klavesnice (jako doposud), ale
+ take z mysi. Pohyb mysi je prezentovan jako stisk klaves se sipkami (vlevo,
+ vpravo, nahoru, dolu). Navratove kody tlacitek mysi lze programove definovat,
+ stejne jako rychlost generovani kodu odpovidajicich klavesam se sipkami. Pri
+ soucasnem pohybu mysi a stisku klavesnice ma klavesnice prednost. V pripade
+ nepritomnosti mysi ovladaji uvedene dve funkce pouze klavesnici.
+
+
+Funkce a procedury:
+------------------}
+
+ Var KazdaAkce       : boolean;  { Je-li TRUE, pak i pohyb mysi je chapan
+                                   funkci KeyPressed jako stisk klaves, jinak
+                                   jsou na mysi akceptovana pouze tlacitka. }
+
+     Z_klaves        : boolean;  { TRUE, pokud byla stisknuta klavesnice }
+
+     Mys_zije        : boolean;  { TRUE, pokud je pripojen ovladac mysi,
+                                   FALSE, pokud neni. }
+
+ Function  ReadKey   : char;     { Vraci bud kod stisknute klavesy na klaves-
+                                   nici, nebo kod generovany tlacitkem mysi,
+                                   nebo kod klaves se sipkami, byla-li mys
+                                   posunuta.}
+
+ Function  KeyPressed: boolean;  { Nabyva hodnot TRUE, byla-li stisknuta kla-
+                                   vesa na klavesnici, nebo tlacitko mysi.
+                                   Pohyb mysi je touto funkci registrovan, jen
+                                   kdyz je nastavena promenna "KazdaAkce"
+                                   na hodnotu TRUE. }
+
+ Procedure Tlacitko  ( Cislo_tlacitka: integer;
+                       Prvni_ASCII_kod, Druhy_ASCII_kod: char);
+                                 { Procedura pro programove definovani kodu,
+                                   ktere budou generovany pri stisku tlacitka
+                                   mysi. Parametr "Druhy_ASCII_kod" ma vyznam
+                                   jen tehdy, kdyz parametr "Prvni_ASCII_kod"
+                                   je roven nule. V takovem pripade jsou pri
+                                   stisku tlacitka postupne generovany oba
+                                   kody (podobne jako u klaves F1 - F10
+                                   na klavesnici, apod.). }
+
+ Procedure Krokovani ( Pocet_kroku_vodorovne,
+                       Pocet_kroku_svisle   : integer);
+                                 { Procedura pro nastaveni rychlosti generova-
+                                   ni kodu klaves se sipkami pri pohybu mysi.
+                                   Pocet_kroku_na 1 znak musi byt kladny a
+                                   mensi nez 100.
+                                   Tato procedura zaroven nuluje vnitrni
+                                   citace polohy mysi, je tedy jakousi
+                                   inicializaci polohy mysi }
+
+(* Poznamky:
+   --------
+ 1) Pouziva-li uzivatel i jine funkce modulu CRT, musi byt v direktive USES
+    uveden modul GMKEY za CRT, aby doslo k zadoucimu predefinovani funkci.
+
+ 2) Modul GMKey je automaticky inicializovan nasledujicimi prikazy:
+                   Tlacitko  (1,#13,#0);    { Leve tlacitko    =  ENTER  }
+                   Tlacitko  (2,' ',#0);    { Stredni tlacitko =  SPACE  }
+                   Tlacitko  (3,#27,#0);    { Prave tlacitko   =  ESCAPE }
+                   Krokovani (8,16);
+                   KazdaAkce := FALSE;
+
+ ษออออออออออออออออออออออออออออออออออออออออออหออออออออออออออออออออออออออออออออป
+ บ                                          บ    Ing. Jiri ZARA, CSc.        บ
+ บ   Soubory "GMKEY*.TPU" a "GMKEY*.DOC"    บ    -------------------         บ
+ บ   jsou urceny pro volne sireni a         บ            CVUT FEL            บ
+ บ   kopirovani zdarma (Public Domain).     บ            Katedra pocitacu    บ
+ บ              !!!!!                       บ            Karlovo nam. 13     บ
+ บ                                          บ    121 35  PRAHA 2             บ
+ ศออออออออออออออออออออออออออออออออออออออออออสออออออออออออออออออออออออออออออออผ
+*)
+{=============================================================================}
+
