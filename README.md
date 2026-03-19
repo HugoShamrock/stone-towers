@@ -14,6 +14,7 @@ A Czech indie DOS game originally written in **Turbo Pascal 7** for MS-DOS, deve
 | [**Dungeon Walker**](https://hugoshamrock.github.io/stone-towers/walker.html) | First-person 3D | Explore a 20×20 stone maze. DDA raycasting engine based on `ENGINE.PAS`. |
 | [**The Adventure**](https://hugoshamrock.github.io/stone-towers/adventure.html) | Point-and-click RPG | Navigate a dungeon, collect items, cast spells, solve puzzles. Procedural graphics. |
 | [**The Adventure — Original Graphics**](https://hugoshamrock.github.io/stone-towers/original.html) | Point-and-click RPG | Same game, rendered with the authentic 1995 VGA artwork (129 GIF files from the original archive). |
+| [**Hybrid**](https://hugoshamrock.github.io/stone-towers/hybrid.html) | First-person 3D RPG | 3D raycasting engine from Dungeon Walker combined with the original 1995 GIF artwork and full RPG mechanics from The Adventure. |
 
 ### Archive
 
@@ -51,6 +52,7 @@ index.html        — hub / landing page
 walker.html       — Dungeon Walker (first-person 3D)
 adventure.html    — The Adventure (procedural graphics)
 original.html     — The Adventure (original 1995 GIF artwork)
+hybrid.html       — Hybrid: 3D engine + original artwork + full RPG
 story.html        — The Story (STONETOW.ERS, © 1995 WIZ)
 gallery.html      — Original artwork gallery (BMP + stonet2 GIFs)
 animations.html   — FLI animation player (1992–1997)

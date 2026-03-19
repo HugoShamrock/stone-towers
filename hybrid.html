@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stone Towers — The Hybrid</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Courier New', monospace;
+    }
+
+    #game-wrap {
+      display: flex;
+      gap: 0;
+      border: 1px solid #2a1e0c;
+    }
+
+    #c3d {
+      display: block;
+      flex-shrink: 0;
+      image-rendering: pixelated;
+    }
+
+    #right-panel {
+      width: 320px;
+      display: flex;
+      flex-direction: column;
+      background: #000;
+      border-left: 1px solid #1a1206;
+    }
+
+    #cGif {
+      display: block;
+      width: 320px;
+      height: 200px;
+      image-rendering: pixelated;
+      flex-shrink: 0;
+    }
+
+    #hud {
+      flex: 1;
+      padding: 8px 10px;
+      border-top: 1px solid #1a1206;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .hud-row { display: flex; align-items: center; gap: 6px; }
+    .hud-label { font-size: 9px; letter-spacing: 1px; color: #3a2c14; width: 22px; }
+    .pip {
+      width: 8px; height: 8px;
+      border: 1px solid #2a1e0c;
+      display: inline-block;
+    }
+    .pip.hp  { background: #8a1a0a; border-color: #c02010; }
+    .pip.mp  { background: #0a1a8a; border-color: #2040c0; }
+    .pip.dia { background: #0a7a8a; border-color: #20b0c0; }
+    .pip.off { background: #0a0806; }
+
+    #inv-row { display: flex; gap: 4px; margin-top: 2px; }
+    .slot {
+      width: 28px; height: 28px;
+      border: 1px solid #1a1206;
+      background: #0a0806;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      font-size: 9px; color: #3a2c14;
+      position: relative;
+      overflow: hidden;
+    }
+    .slot canvas { position: absolute; top: 0; left: 0; }
+    .slot.selected { border-color: #c8a030; }
+
+    #msg-box {
+      font-size: 10px;
+      color: #7a6040;
+      line-height: 1.6;
+      letter-spacing: 0.5px;
+      border-top: 1px solid #1a1206;
+      padding-top: 6px;
+      min-height: 40px;
+    }
+
+    #controls-hint {
+      font-size: 9px;
+      color: #2a2010;
+      letter-spacing: 0.5px;
+      line-height: 1.7;
+      border-top: 1px solid #110e06;
+      padding-top: 5px;
+      margin-top: auto;
+    }
+
+    #controls-hint span { color: #3a2c14; }
+
+    #back-link {
+      margin-top: 8px;
+      font-size: 10px;
+      letter-spacing: 1px;
+    }
+    #back-link a { color: #3a2810; text-decoration: none; }
+    #back-link a:hover { color: #8a6030; }
+  </style>
+</head>
+<body>
+
+  <div id="game-wrap">
+    <canvas id="c3d" width="480" height="400"></canvas>
+    <div id="right-panel">
+      <canvas id="cGif" width="320" height="200"></canvas>
+      <div id="hud">
+        <div class="hud-row">
+          <span class="hud-label">HP</span>
+          <div id="hp-pips"></div>
+        </div>
+        <div class="hud-row">
+          <span class="hud-label">MP</span>
+          <div id="mp-pips"></div>
+        </div>
+        <div class="hud-row">
+          <span class="hud-label">◆</span>
+          <div id="dia-pips"></div>
+        </div>
+        <div id="inv-row"></div>
+        <div id="msg-box">You stand at the edge of the dungeon…</div>
+        <div id="controls-hint">
+          <span>WASD/↑↓←→</span> move &nbsp; <span>A/D</span> turn<br>
+          <span>1–5</span> spells &nbsp; <span>F</span> interact &nbsp; <span>M</span> map
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="back-link"><a href="index.html">← back to hub</a></div>
+
+<script>
+'use strict';
+
+// ── CANVAS SETUP ─────────────────────────────────────────────────────────────
+const c3d  = document.getElementById('c3d');
+const ctx  = c3d.getContext('2d');
+const W3 = 480, H3 = 400;
+
+const cGif = document.getElementById('cGif');
+const ctx2 = cGif.getContext('2d');
+const WG = 320, HG = 200;
+const S  = 1; // GIF scale (original.html used S=2; we render at native 1x)
+
+// ── GIF LOADER ───────────────────────────────────────────────────────────────
+const GIF_BASE = 'original-dos/stonet1/STONET/';
+const GIF_IDS = [
+  '50000','50001','50002','50003','50004','50005','50006','50007','50008','50009','50010','50011',
+  '51001','52001','53001','53002','53003','53004','53005','53006','53007',
+  '11511','11512','11521','11531','11541',
+  '11611','11612','11621','11631','11632','11633','11641',
+  '12511','12521','12522','12523','12524','12525','12526','12527','12528','12531','12541',
+  '13511','13521','13531','13541','13542',
+  '14111','14112','14113','14121','14131','14141',
+  '14211','14221','14231','14241',
+  '14311','14312','14313','14314','14315','14316','14317','14321','14331','14341',
+  '14411','14421','14431','14432','14441',
+  '14511','14521','14522','14523','14524','14525','14526','14527','14528','14531','14541',
+  '14611','14612','14621','14631','14641',
+  '15411','15421','15431','15441',
+  '15611','15621','15631','15641',
+  '15711','15721','15731','15732','15733','15734','15735','15736','15737','15738','15741',
+  '16411','16412','16413','16414','16415','16416','16417','16418','16419','16421','16431','16441',
+  '16511','16521','16531','16541',
+  '16611','16621','16622','16631','16641',
+];
+
+const bitmaps = {};
+let loadedCount = 0, loadState = 'loading';
+
+function drawGif(id, ox, oy) {
+  if (!bitmaps[id]) return;
+  ctx2.drawImage(bitmaps[id], ox * S, oy * S, bitmaps[id].width * S, bitmaps[id].height * S);
+}
+
+GIF_IDS.forEach(id => {
+  const img = new Image();
+  img.onload = img.onerror = () => {
+    if (img.complete && img.naturalWidth) bitmaps[id] = img;
+    if (++loadedCount === GIF_IDS.length) loadState = 'ready';
+  };
+  img.src = GIF_BASE + id + '.GIF';
+});
+
+// ── DUNGEON MAP (10×10 from adventure room layout) ───────────────────────────
+// 0=floor/room, 1=wall. Derived from original.html's rooms array.
+// (4,2) and (3,5) start as walls (wolf/bat block them), opened dynamically.
+const BASE_MAP = [
+  [1,1,1,1,1,1,1,1,1,1], // y=0
+  [1,1,1,1,0,1,1,1,1,1], // y=1  (4,1)
+  [1,1,1,1,1,1,1,1,1,1], // y=2  (4,2) — starts blocked by wolf; dynMap opens it
+  [1,1,1,1,0,1,1,1,1,1], // y=3  (4,3)
+  [1,1,1,1,0,1,0,1,1,1], // y=4  (4,4) (6,4)
+  [1,0,0,1,0,1,0,1,1,1], // y=5  (1,5)(2,5)  (4,5)(6,5) — (3,5) starts blocked by bat
+  [1,0,1,1,0,0,0,1,1,1], // y=6  (1,6) (4,6)(5,6)(6,6)
+  [1,1,1,1,1,0,1,1,1,1], // y=7  (5,7)
+  [1,1,1,1,1,1,1,1,1,1], // y=8
+  [1,1,1,1,1,1,1,1,1,1], // y=9
+];
+
+let dynMap;
+
+function isWall(fx, fy) {
+  const mx = fx | 0, my = fy | 0;
+  if (mx < 0 || mx >= 10 || my < 0 || my >= 10) return true;
+  return dynMap[my][mx] === 1;
+}
+
+// ── RAYCASTING CONSTANTS & TEXTURES ──────────────────────────────────────────
+const TEX = 64, FOG = 9;
+
+function hash(x, y) {
+  let v = (Math.imul(x, 1610612741) + Math.imul(y, 805306457)) | 0;
+  v ^= v >>> 17; v = Math.imul(v, 0x9e3779b9 | 0); v ^= v >>> 13;
+  return (v >>> 0) & 0xff;
+}
+
+function makeStoneTex(r0, g0, b0) {
+  const d = new Uint8ClampedArray(TEX * TEX * 4);
+  const BH = 16, BW = 32;
+  for (let ty = 0; ty < TEX; ty++) {
+    for (let tx = 0; tx < TEX; tx++) {
+      const row = (ty / BH) | 0;
+      const bx  = (tx + (row & 1) * 16) % BW;
+      const by  = ty % BH;
+      const mortar = bx <= 1 || by <= 1;
+      const i = (ty * TEX + tx) * 4;
+      if (mortar) {
+        const n = hash(tx * 3, ty * 3) >> 3;
+        d[i]=((r0*.35)|0)+n; d[i+1]=((g0*.35)|0)+n; d[i+2]=((b0*.35)|0)+n;
+      } else {
+        const v = (hash((tx>>2)<<2,(ty>>2)<<2)>>1) + (hash(tx,ty)>>4);
+        d[i]=Math.min(255,r0+v); d[i+1]=Math.min(255,g0+v); d[i+2]=Math.min(255,b0+v);
+      }
+      d[i+3]=255;
+    }
+  }
+  return d;
+}
+
+const stoneTex = makeStoneTex(90, 88, 82);
+
+// ── PLAYER ───────────────────────────────────────────────────────────────────
+const player = {
+  x: 1.5, y: 6.5,     // start in room (1,6)
+  dirX: 0, dirY: -1,  // facing north (z8=1)
+  planeX: 0.66, planeY: 0,
+};
+
+// ── ADVENTURE GAME STATE ─────────────────────────────────────────────────────
+let x8, y8, z8;       // grid position + cardinal direction (1=N,2=E,3=S,4=W)
+let hp, mana, dia, batoh, selectedSlot, l1;
+let gameState = 'loading'; // 'loading' | 'title' | 'game' | 'gameover' | 'win'
+let msgText = '';
+let tick = 0;
+let showMap3d = false;
+
+function initGame() {
+  dynMap = BASE_MAP.map(row => [...row]);
+  // Wolf initially blocks (4,2), bat initially blocks (3,5)
+  dynMap[2][4] = 1;
+  dynMap[5][3] = 1;
+
+  x8 = 1; y8 = 6; z8 = 1;
+  player.x = 1.5; player.y = 6.5;
+  player.dirX = 0; player.dirY = -1;
+  player.planeX = 0.66; player.planeY = 0;
+
+  hp = 4; mana = 1; dia = 0; selectedSlot = -1;
+  batoh = [1, 0, 0, 0, 0, 0];
+
+  l1 = [];
+  for (let x = 0; x <= 9; x++) {
+    l1[x] = [];
+    for (let y = 0; y <= 9; y++) l1[x][y] = [0,0,0,0,0];
+  }
+  const rooms = [
+    [1,5],[1,6],[2,5],[3,5],
+    [4,1],[4,2],[4,3],[4,4],[4,5],[4,6],
+    [5,6],[5,7],
+    [6,4],[6,5],[6,6]
+  ];
+  for (const [rx,ry] of rooms) for (let z=1;z<=4;z++) l1[rx][ry][z]=1;
+
+  l1[1][6][3] = 2;     // firepit: torch
+  l1[2][5][2] = 4;     // bat: alive
+  for (let z=1;z<=4;z++) l1[3][5][z] = 0; // bat blocks (3,5)
+  l1[4][3][1] = 6;     // wolf: alive
+  for (let z=1;z<=4;z++) l1[4][2][z] = 0; // wolf blocks (4,2)
+
+  showMsg('You stand at the edge of the dungeon…');
+  gameState = 'game';
+  updateHUD();
+}
+
+// ── DIRECTION HELPERS ─────────────────────────────────────────────────────────
+function getZ8fromDir() {
+  // angle: N=0, E=PI/2, S=PI, W=-PI/2 using atan2(dirX, -dirY)
+  const a = Math.atan2(player.dirX, -player.dirY);
+  return (Math.floor(((a + 2*Math.PI + Math.PI/4) % (2*Math.PI)) / (Math.PI/2)) % 4) + 1;
+}
+
+function syncDirFromZ8(newZ8) {
+  const dirs = { 1:[0,-1,.66,0], 2:[1,0,0,.66], 3:[0,1,-.66,0], 4:[-1,0,0,-.66] };
+  const [dx,dy,px,py] = dirs[newZ8];
+  player.dirX=dx; player.dirY=dy; player.planeX=px; player.planeY=py;
+}
+
+// ── MOVEMENT ──────────────────────────────────────────────────────────────────
+const keys = {};
+c3d.setAttribute('tabindex','0');
+c3d.focus();
+c3d.addEventListener('click', () => { c3d.focus(); if (gameState==='title') initGame(); });
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code==='KeyM') showMap3d = !showMap3d;
+  if ((e.code==='Enter'||e.code==='Space') && gameState==='title') initGame();
+  if ((e.code==='Enter'||e.code==='Space') && gameState==='gameover') initGame();
+  if ((e.code==='Enter'||e.code==='Space') && gameState==='win') initGame();
+  if (e.code==='KeyF' && gameState==='game') interact();
+  const sp = parseInt(e.key);
+  if (sp>=1&&sp<=5 && gameState==='game') useSpell(sp);
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+});
+window.addEventListener('keyup', e => { keys[e.code]=false; });
+
+function rotate(a) {
+  const cos=Math.cos(a), sin=Math.sin(a);
+  const dx=player.dirX, px=player.planeX;
+  player.dirX   = dx*cos - player.dirY*sin;
+  player.dirY   = dx*sin + player.dirY*cos;
+  player.planeX = px*cos - player.planeY*sin;
+  player.planeY = px*sin + player.planeY*cos;
+}
+
+const MOVE_SPD = 0.06, ROT_SPD = 0.04;
+let torchPhase = 0;
+let prevX8 = 1, prevY8 = 6;
+
+function update(dt) {
+  if (gameState !== 'game') return;
+  torchPhase += dt * 4;
+  tick++;
+  const ms = MOVE_SPD * dt * 60;
+  const rs = ROT_SPD  * dt * 60;
+
+  if (keys['KeyW']||keys['ArrowUp'])    { if (!isWall(player.x+player.dirX*ms,player.y)) player.x+=player.dirX*ms; if (!isWall(player.x,player.y+player.dirY*ms)) player.y+=player.dirY*ms; }
+  if (keys['KeyS']||keys['ArrowDown'])  { if (!isWall(player.x-player.dirX*ms,player.y)) player.x-=player.dirX*ms; if (!isWall(player.x,player.y-player.dirY*ms)) player.y-=player.dirY*ms; }
+  if (keys['KeyQ'])                     { if (!isWall(player.x-player.planeX*ms,player.y)) player.x-=player.planeX*ms; if (!isWall(player.x,player.y-player.planeY*ms)) player.y-=player.planeY*ms; }
+  if (keys['KeyE'])                     { if (!isWall(player.x+player.planeX*ms,player.y)) player.x+=player.planeX*ms; if (!isWall(player.x,player.y+player.planeY*ms)) player.y+=player.planeY*ms; }
+  if (keys['KeyA']||keys['ArrowLeft'])  rotate(-rs);
+  if (keys['KeyD']||keys['ArrowRight']) rotate(rs);
+
+  // Update grid position from float position
+  const nx = player.x|0, ny = player.y|0;
+  z8 = getZ8fromDir();
+  if (nx !== prevX8 || ny !== prevY8) {
+    x8 = nx; y8 = ny;
+    prevX8 = nx; prevY8 = ny;
+    onEnterRoom();
+    updateHUD();
+  }
+}
+
+// ── ADVENTURE LOGIC ───────────────────────────────────────────────────────────
+function onEnterRoom() {
+  if (x8===2&&y8===5&&l1[2][5][2]===4) {
+    showMsg("A bat swoops at you! (-1 HP)");
+    hp=Math.max(0,hp-1); if (hp<=0) { gameState='gameover'; return; }
+  }
+  if (x8===4&&y8===3&&l1[4][3][1]===6) {
+    showMsg("The wolf lunges! (-1 HP)");
+    hp=Math.max(0,hp-1); if (hp<=0) { gameState='gameover'; return; }
+  }
+  if (x8===6&&y8===4&&l1[6][4][1]===1) {
+    showMsg("The goblin slashes! (-1 HP)");
+    hp=Math.max(0,hp-1); if (hp<=0) { gameState='gameover'; return; }
+  }
+  // Describe current room
+  if (x8===5&&y8===7) { if (l1[5][7][z8===3?3:1]>=1) showMsg("You meet the Druid. He offers wisdom."); }
+  else if (x8===6&&y8===6&&l1[6][6][2]===2) showMsg("A well. Fresh water glimmers inside.");
+  else if (x8===4&&y8===6) showMsg("A junction. Paths branch north and east.");
+  else if (x8===1&&y8===5) showMsg("A dim corridor. Something glitters ahead.");
+  updateHUD();
+}
+
+function interact() {
+  const st = l1[x8][y8][z8];
+  if (x8===5&&y8===7&&z8===3&&st===1) { l1[5][7][3]=2; mana=Math.min(5,mana+2); showMsg("The Druid restores your mana! (+2 MP)"); updateHUD(); return; }
+  if (x8===6&&y8===6&&z8===2&&st===2) { l1[6][6][2]=9; dia++; showMsg("You draw a diamond from the well!"); updateHUD(); return; }
+  if (x8===4&&y8===5&&z8===2) {
+    if (l1[4][5][2]===1) { showMsg("A magpie watches from above — it holds a key."); return; }
+    if (l1[4][5][2]===4) { l1[4][5][2]=8; batoh[1]=5; showMsg("You grab the fallen key!"); updateHUD(); return; }
+  }
+  showMsg("Nothing to interact with here.");
+}
+
+function useItem(slot) {
+  const item = batoh[slot];
+  if (item===0) { showMsg("That slot is empty."); return; }
+  if (item===1) { hp=Math.min(5,hp+1); batoh[slot]=0; showMsg("You eat the apple. (+1 HP)"); updateHUD(); return; }
+  if (item===5) { showMsg("A key — but which door does it unlock?"); return; }
+  showMsg("You use the item.");
+}
+
+const SPELL_NAMES = ['','Fire','Death','Flash','Move','Heal'];
+const SPELL_COST  = [0, 1, 2, 1, 2, 2];
+
+function useSpell(sp) {
+  const cost = SPELL_COST[sp];
+  if (mana < cost) { showMsg(`Not enough mana for ${SPELL_NAMES[sp]} spell.`); return; }
+  if (sp===1) {
+    if (x8===1&&y8===6&&z8===3&&l1[1][6][3]===2) { mana-=cost; l1[1][6][3]=9; showMsg("Fire spell! The torch lights the room!"); updateHUD(); return; }
+    showMsg("Fire spell fizzles — nothing to burn."); return;
+  }
+  if (sp===2) {
+    if (x8===4&&y8===3&&z8===1&&l1[4][3][1]===6) { mana-=cost; showMsg("Death spell! The wolf collapses!"); l1[4][3][1]=8; for (let z=1;z<=4;z++) l1[4][2][z]=1; dynMap[2][4]=0; updateHUD(); return; }
+    if (x8===2&&y8===5&&z8===2&&l1[2][5][2]===4) { mana-=cost; showMsg("Death spell! The bat drops dead."); l1[2][5][2]=9; for (let z=1;z<=4;z++) l1[3][5][z]=1; dynMap[5][3]=0; updateHUD(); return; }
+    mana-=cost; showMsg("Death spell — nothing dies here."); updateHUD(); return;
+  }
+  if (sp===3) { mana-=cost; showMsg("Flash! A blinding light fills the dungeon."); updateHUD(); return; }
+  if (sp===4) {
+    if (x8===6&&y8===4&&z8===1&&l1[6][4][1]===1) { mana-=cost; showMsg("Move spell! The goblin flies across the room. A diamond!"); l1[6][4][1]=8; dia++; updateHUD(); return; }
+    if (x8===4&&y8===3&&z8===1&&l1[4][3][1]===6) { mana-=cost; showMsg("Move spell! The wolf is flung aside!"); l1[4][3][1]=8; for (let z=1;z<=4;z++) l1[4][2][z]=1; dynMap[2][4]=0; updateHUD(); return; }
+    mana-=cost; showMsg("Move spell — nothing to move here."); updateHUD(); return;
+  }
+  if (sp===5) { mana-=cost; hp=Math.min(5,hp+2); showMsg("Heal! Warmth surges through you. (+2 HP)"); updateHUD(); return; }
+}
+
+// ── HUD ───────────────────────────────────────────────────────────────────────
+function showMsg(txt) { msgText = txt; document.getElementById('msg-box').textContent = txt; }
+
+function pips(n, max, cls) {
+  return Array.from({length:max}, (_,i) => `<div class="pip ${cls}${i<n?'':' off'}"></div>`).join('');
+}
+
+function updateHUD() {
+  document.getElementById('hp-pips').innerHTML = pips(hp, 5, 'hp');
+  document.getElementById('mp-pips').innerHTML = pips(mana, 5, 'mp');
+  document.getElementById('dia-pips').innerHTML = pips(dia, 3, 'dia');
+  const invRow = document.getElementById('inv-row');
+  invRow.innerHTML = '';
+  for (let i=0; i<6; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'slot' + (i===selectedSlot?' selected':'');
+    slot.title = batoh[i] ? `Item ${batoh[i]}` : 'empty';
+    slot.textContent = batoh[i] ? ['','🍎','','','','🔑'][batoh[i]]||batoh[i] : '';
+    slot.style.fontSize = '14px';
+    slot.addEventListener('click', () => { selectedSlot=(selectedSlot===i?-1:i); if(selectedSlot>=0)useItem(selectedSlot); updateHUD(); });
+    invRow.appendChild(slot);
+  }
+}
+
+// ── 3D RENDERING ─────────────────────────────────────────────────────────────
+const imgData = ctx.createImageData(W3, H3);
+const buf = imgData.data;
+
+function px3d(x, y, r, g, b) {
+  const i = (y * W3 + x) << 2;
+  buf[i]=r; buf[i+1]=g; buf[i+2]=b; buf[i+3]=255;
+}
+
+function render3D() {
+  const torch = 0.88 + Math.sin(torchPhase*1.1)*0.05 + Math.sin(torchPhase*3.9)*0.02;
+  // Floor/ceiling gradient
+  for (let y = 0; y < H3; y++) {
+    for (let x = 0; x < W3; x++) {
+      if (y < H3>>1) {
+        const t = y / (H3>>1);
+        px3d(x,y,((14+t*9)*torch)|0,((14+t*9)*torch)|0,((20+t*13)*torch)|0);
+      } else {
+        const t = (y-(H3>>1))/(H3>>1);
+        px3d(x,y,((10+t*18)*torch)|0,((8+t*14)*torch)|0,((6+t*10)*torch)|0);
+      }
+    }
+  }
+  // Raycasting
+  for (let sx = 0; sx < W3; sx++) {
+    const camX = 2*sx/W3 - 1;
+    const rdx = player.dirX + player.planeX*camX;
+    const rdy = player.dirY + player.planeY*camX;
+    let mx=player.x|0, my=player.y|0;
+    const ddx = rdx===0?1e30:Math.abs(1/rdx);
+    const ddy = rdy===0?1e30:Math.abs(1/rdy);
+    let sdx,sdy,stepx,stepy;
+    if (rdx<0){stepx=-1;sdx=(player.x-mx)*ddx;}else{stepx=1;sdx=(mx+1-player.x)*ddx;}
+    if (rdy<0){stepy=-1;sdy=(player.y-my)*ddy;}else{stepy=1;sdy=(my+1-player.y)*ddy;}
+    let side=0,hit=0;
+    for (let n=0;n<64&&!hit;n++) {
+      if (sdx<sdy){sdx+=ddx;mx+=stepx;side=0;}else{sdy+=ddy;my+=stepy;side=1;}
+      if (mx<0||mx>=10||my<0||my>=10) hit=1;
+      else if (dynMap[my][mx]===1) hit=1;
+    }
+    const dist = Math.max(0.01, side===0?sdx-ddx:sdy-ddy);
+    const lh = (H3/dist)|0;
+    const y0 = Math.max(0,   ((H3-lh)>>1));
+    const y1 = Math.min(H3-1,((H3+lh)>>1));
+    let wallX = side===0 ? player.y+dist*rdy : player.x+dist*rdx;
+    wallX -= Math.floor(wallX);
+    let tx = (wallX*TEX)|0;
+    if (side===0&&rdx>0) tx=TEX-tx-1;
+    if (side===1&&rdy<0) tx=TEX-tx-1;
+    const step = TEX/lh;
+    let tp = ((y0-(H3>>1)+(lh>>1))*step);
+    const fog = Math.max(0, 1-dist/FOG)*torch;
+    const sd  = side===1?0.63:1.0;
+    for (let sy=y0;sy<=y1;sy++) {
+      const ty = ((tp|0)&(TEX-1));
+      tp+=step;
+      const ti=(ty*TEX+tx)<<2;
+      const f=fog*sd;
+      px3d(sx,sy,(stoneTex[ti]*f)|0,(stoneTex[ti+1]*f)|0,(stoneTex[ti+2]*f)|0);
+    }
+  }
+  ctx.putImageData(imgData,0,0);
+  // Compass
+  const ang  = Math.atan2(player.dirX,-player.dirY);
+  const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+  const idx  = (Math.round(((ang+Math.PI)/(Math.PI*2))*8)%8+8)%8;
+  ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(W3-52,6,44,24);
+  ctx.fillStyle='#c8a030'; ctx.font='14px "Courier New"'; ctx.textAlign='right';
+  ctx.fillText(dirs[idx],W3-10,24);
+  // Crosshair
+  const cx2=W3>>1,cy2=H3>>1;
+  ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(cx2-8,cy2); ctx.lineTo(cx2+8,cy2);
+  ctx.moveTo(cx2,cy2-8); ctx.lineTo(cx2,cy2+8); ctx.stroke();
+  // Spell hint overlay
+  ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(6,H3-28,W3-12,22);
+  ctx.fillStyle='#4a3818'; ctx.font='9px "Courier New"'; ctx.textAlign='left';
+  ctx.fillText('1:Fire  2:Death  3:Flash  4:Move  5:Heal  |  F: interact  |  M: map',10,H3-12);
+  // Minimap
+  if (showMap3d) {
+    const CS=14, OX=8, OY=8;
+    ctx.fillStyle='rgba(0,0,0,0.8)'; ctx.fillRect(OX-2,OY-2,10*CS+4,10*CS+4);
+    for (let my2=0;my2<10;my2++) for (let mx2=0;mx2<10;mx2++) {
+      ctx.fillStyle=dynMap[my2][mx2]===1?'#2a1e0c':'#1a1208';
+      ctx.fillRect(OX+mx2*CS,OY+my2*CS,CS-1,CS-1);
+    }
+    ctx.fillStyle='#ffd040';
+    ctx.fillRect(OX+(player.x|0)*CS+3,OY+(player.y|0)*CS+3,CS-7,CS-7);
+  }
+}
+
+// ── ADVENTURE PANEL (GIF scene) ───────────────────────────────────────────────
+function renderAdventure() {
+  ctx2.fillStyle='#000'; ctx2.fillRect(0,0,WG,HG);
+  drawGif('50000',0,0);
+  drawGif('51001',2,5);
+  drawGif('52001',2,52);
+  drawRoomScene();
+  drawStats2();
+  drawMinimap2();
+}
+
+function drawRoomScene() {
+  const cx=x8,cy=y8,cz=z8;
+  const state=l1[cx]&&l1[cx][cy]?l1[cx][cy][cz]:0;
+  const af=Math.floor(tick/8);
+  let c5=state.toString();
+  if (cx===1&&cy===6&&cz===3&&(state===2||state===9))   c5='1';
+  if (cx===2&&cy===5&&cz===2&&(state>=4&&state<=9))      c5='1';
+  if (cx===4&&cy===5&&cz===2&&(state===4||state===8))    c5='1';
+  if (cx===5&&cy===7&&cz===3&&(state===2||state===9))    c5='1';
+  if (cx===6&&cy===6&&cz===2&&state===2)                 c5='1';
+  if (cx===4&&cy===3&&cz===1&&(state===6||state===8))    c5='1';
+  const roomId=`1${cx}${cy}${cz}${c5}`;
+  if (bitmaps[roomId]) drawGif(roomId,59,4);
+  else { const fb=`1${cx}${cy}${cz}1`; if(bitmaps[fb]) drawGif(fb,59,4); }
+  // Creature overlays
+  if (cx===1&&cy===6&&cz===3&&state===2) drawGif(af%2===0?'11632':'11633',119,101);
+  if (cx===2&&cy===5&&cz===2) {
+    if (state===4) drawGif(['12524','12525','12526'][af%3],84,39);
+    else if (state===9) drawGif('12528',112,117);
+  }
+  if (cx===4&&cy===5&&cz===2) {
+    if (state===1) drawGif('14522',128,23);
+    else if (state===4) drawGif('14525',128,15);
+  }
+  if (cx===4&&cy===3&&cz===1&&state===6) drawGif(['14315','14316','14317'][af%3],119,39);
+  if (cx===5&&cy===7&&cz===3&&state===1) {
+    const p2=[['15732','15735'],['15733','15736'],['15734','15737']];
+    drawGif(p2[af%3][0],221,5); drawGif(p2[af%3][1],168,73);
+  }
+  if (cx===6&&cy===4&&cz===1&&state===1) drawGif(af%2===0?'16411':'16412',60,75);
+}
+
+function drawStats2() {
+  drawGif('50004',3,81);
+  for (let f=1;f<=hp;f++) drawGif('50005',1+7*f,83);
+  drawGif('50004',3,109);
+  for (let f=1;f<=mana;f++) drawGif('50006',1+7*f,111);
+}
+
+function drawMinimap2() {
+  const OX=258,OY=140,CS=5;
+  for (let gx=1;gx<=9;gx++) for (let gy=1;gy<=9;gy++) {
+    let vis=false;
+    for (let z=1;z<=4;z++) { if(l1[gx]&&l1[gx][gy]&&l1[gx][gy][z]>0){vis=true;break;} }
+    if (vis) { ctx2.fillStyle=gx===x8&&gy===y8?'#c8a030':'#3a2a18'; ctx2.fillRect(OX+gx*CS,OY+gy*CS,CS-1,CS-1); }
+  }
+}
+
+// ── TITLE / GAMEOVER SCREENS ──────────────────────────────────────────────────
+function renderTitle() {
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,W3,H3);
+  const t=performance.now()/1000;
+  const fl=0.82+Math.sin(t*6.3)*0.06+Math.sin(t*14.7)*0.02;
+  ctx.fillStyle=`rgba(200,155,50,${fl})`; ctx.font='bold 60px "Courier New"'; ctx.textAlign='center';
+  ctx.fillText('STONE',  W3/2, 130);
+  ctx.fillText('TOWERS', W3/2, 198);
+  ctx.fillStyle=`rgba(120,100,50,${fl*.8})`; ctx.font='12px "Courier New"';
+  ctx.fillText('The Hybrid — 3D engine + original 1995 adventure', W3/2, 236);
+  const blink=Math.sin(t*3)>0;
+  ctx.fillStyle=blink?`rgba(200,170,80,${fl})`:`rgba(80,60,20,${fl})`;
+  ctx.font='13px "Courier New"'; ctx.fillText('— Press ENTER or click to begin —', W3/2, 290);
+
+  ctx2.fillStyle='#000'; ctx2.fillRect(0,0,WG,HG);
+  ctx2.fillStyle='#3a2810'; ctx2.font='10px "Courier New"'; ctx2.textAlign='center';
+  ctx2.fillText('Combines:', WG/2, 40);
+  ctx2.fillStyle='#5a3e18'; ctx2.font='9px "Courier New"';
+  ctx2.fillText('• 3D raycasting movement from Game 1', WG/2, 60);
+  ctx2.fillText('• Original 1995 GIF art from Game 3', WG/2, 74);
+  ctx2.fillText('• Full RPG mechanics (HP/MP/spells)', WG/2, 88);
+  ctx2.fillStyle='#2a1e0c'; ctx2.fillText('v0.1 — work in progress', WG/2, 110);
+}
+
+function renderGameOver() {
+  ctx.fillStyle='rgba(0,0,0,0.75)'; ctx.fillRect(0,0,W3,H3);
+  ctx.fillStyle='#8a1010'; ctx.font='bold 36px "Courier New"'; ctx.textAlign='center';
+  ctx.fillText('YOU DIED', W3/2, H3/2-20);
+  ctx.fillStyle='#4a3010'; ctx.font='12px "Courier New"';
+  ctx.fillText('Press ENTER to try again', W3/2, H3/2+20);
+}
+
+function renderWin() {
+  ctx.fillStyle='rgba(0,0,0,0.75)'; ctx.fillRect(0,0,W3,H3);
+  ctx.fillStyle='#c8a030'; ctx.font='bold 30px "Courier New"'; ctx.textAlign='center';
+  ctx.fillText('TORWEN IS FREE', W3/2, H3/2-20);
+  ctx.fillStyle='#4a3010'; ctx.font='12px "Courier New"';
+  ctx.fillText('Press ENTER to play again', W3/2, H3/2+20);
+}
+
+// ── LOADING SCREEN ────────────────────────────────────────────────────────────
+function renderLoading() {
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,W3,H3);
+  const pct=loadedCount/GIF_IDS.length;
+  ctx.fillStyle='#1a1206'; ctx.fillRect(W3/2-100,H3/2-4,200,8);
+  ctx.fillStyle='#6a4c18'; ctx.fillRect(W3/2-100,H3/2-4,pct*200,8);
+  ctx.fillStyle='#4a3818'; ctx.font='10px "Courier New"'; ctx.textAlign='center';
+  ctx.fillText(`Loading artwork… ${loadedCount} / ${GIF_IDS.length}`,W3/2,H3/2+24);
+  ctx2.fillStyle='#000'; ctx2.fillRect(0,0,WG,HG);
+  ctx2.fillStyle='#2a1e0c'; ctx2.font='10px "Courier New"'; ctx2.textAlign='center';
+  ctx2.fillText('Stone Towers — The Hybrid',WG/2,HG/2-8);
+  ctx2.fillStyle='#1a1206'; ctx2.fillText(`${Math.round(pct*100)}%`,WG/2,HG/2+12);
+}
+
+// ── MAIN LOOP ─────────────────────────────────────────────────────────────────
+let lastTs = 0;
+function loop(ts) {
+  const dt = Math.min((ts-lastTs)/1000, 0.05);
+  lastTs = ts;
+
+  if (loadState==='loading') { renderLoading(); requestAnimationFrame(loop); return; }
+  if (gameState==='loading') { gameState='title'; }
+
+  update(dt);
+
+  if (gameState==='title')    { renderTitle(); }
+  else if (gameState==='game') { render3D(); renderAdventure(); }
+  else if (gameState==='gameover') { render3D(); renderAdventure(); renderGameOver(); }
+  else if (gameState==='win')  { render3D(); renderAdventure(); renderWin(); }
+
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(ts => { lastTs=ts; requestAnimationFrame(loop); });
+</script>
+</body>
+</html>
