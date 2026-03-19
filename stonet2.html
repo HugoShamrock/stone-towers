@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stone Towers II — Stone Towers</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .st2-wrap {
+      width: 100%;
+      max-width: 860px;
+      padding: 16px 24px 48px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .st2-intro {
+      font-size: 11px;
+      color: #4a3a1e;
+      line-height: 1.8;
+      max-width: 640px;
+    }
+
+    .st2-frame {
+      background: #000;
+      border: 1px solid #2a1e0c;
+      position: relative;
+      max-width: 640px;
+      width: 100%;
+    }
+
+    #st2-canvas {
+      display: block;
+      width: 100%;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    .st2-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      background: #000;
+    }
+
+    .st2-load-title {
+      font-size: 12px;
+      color: #4a3a1e;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    .st2-progress {
+      width: 260px;
+      height: 2px;
+      background: #0e0a04;
+      border: 1px solid #1a1206;
+      overflow: hidden;
+    }
+
+    .st2-progress-bar {
+      height: 100%;
+      background: #6a4c18;
+      width: 0%;
+      transition: width 0.15s;
+    }
+
+    .st2-status {
+      font-size: 10px;
+      color: #3a2c14;
+      letter-spacing: 1px;
+    }
+
+    .st2-controls {
+      font-size: 10px;
+      color: #3a2c14;
+      letter-spacing: 1px;
+      max-width: 640px;
+      line-height: 2.2;
+    }
+
+    .st2-controls span { color: #5a4020; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a class="logo" href="index.html">STONE TOWERS</a>
+    <div class="tagline">czech dungeon crawler &nbsp;·&nbsp; original 1995 &nbsp;·&nbsp; web port 2025</div>
+  </header>
+
+  <div class="back-link"><a href="index.html">← back to hub</a></div>
+
+  <p class="section-title">— stone towers II —</p>
+
+  <div class="st2-wrap">
+
+    <p class="st2-intro">
+      <strong style="color:#6a4c18">Stone Towers II</strong> — complete reimagining on a new 640×480 engine,
+      developed 1998–1999 but never released. Third-person RPG with the original character artwork
+      (CEL sprites, 320×200 tiles), 3D dungeon backgrounds, and a new map system.
+      Web port based on the original Pascal source (<em>453x.pas</em>, <em>LOST9.PAS</em>).
+    </p>
+
+    <div class="st2-frame">
+      <canvas id="st2-canvas" width="640" height="480"></canvas>
+      <div class="st2-overlay" id="st2-overlay">
+        <div class="st2-load-title">Stone Towers II</div>
+        <div class="st2-progress">
+          <div class="st2-progress-bar" id="st2-pbar"></div>
+        </div>
+        <div class="st2-status" id="st2-status">loading assets…</div>
+      </div>
+    </div>
+
+    <div class="st2-controls">
+      <span>W / ↑</span> — forward &nbsp;·&nbsp;
+      <span>S / ↓</span> — back &nbsp;·&nbsp;
+      <span>A / ← / Q</span> — turn left &nbsp;·&nbsp;
+      <span>D / → / E</span> — turn right
+    </div>
+
+  </div>
+
+  <footer>
+    <div class="footer-left">
+      original game &copy; <b>raist</b> &nbsp;·&nbsp; <b>ernie</b> &nbsp;·&nbsp; <b>dusty</b>
+    </div>
+    <div class="footer-right">
+      <a href="index.html">hub</a>
+      <span class="footer-sep">·</span>
+      <a href="README.md">README</a>
+      <span class="footer-sep">·</span>
+      <a href="https://github.com/HugoShamrock/stone-towers" target="_blank">GitHub</a>
+    </div>
+  </footer>
+
+  <script>
+  // ─── STONE TOWERS II WEB PORT ───────────────────────────────────────────────
+  // Based on Pascal source: 453x.pas, LOST9.PAS, LOST_1OK.PAS
+  //
+  // Screen: 640×480
+  // Character area: 640×400 (four 320×200 CEL tiles composited)
+  //   CHB1 at (0,0)    CHB2 at (320,0)
+  //   CHB3 at (0,200)  CHB4 at (320,200)
+  // UI panels: PAN1.CEL at (0,400), PAN2.CEL at (320,400)  [top 80px visible]
+  // Palette: CH.COL — 768 bytes, 256×RGB, values 0–63 → multiply ×4
+
+  const BASE  = 'original-dos/stonet2/';
+  const SW = 640, SH = 480; // screen
+  const TW = 320, TH = 200; // CEL tile
+
+  const canvas  = document.getElementById('st2-canvas');
+  const ctx     = canvas.getContext('2d');
+  const imgData = ctx.createImageData(SW, SH);
+  const pix     = imgData.data;
+
+  let palette = null;          // Uint8Array[768]  RGB 0-255 (tripled)
+  const celCache = {};         // name(upper) → Uint8Array[64000]
+
+  // ── LOADER HELPERS ──────────────────────────────────────────────────────────
+
+  async function loadPalette() {
+    const r   = await fetch(BASE + 'CH.COL');
+    const raw = new Uint8Array(await r.arrayBuffer());
+    palette   = new Uint8Array(768);
+    for (let i = 0; i < 768; i++) palette[i] = (raw[i] & 63) * 4;
+  }
+
+  async function loadCEL(name) {
+    const key = name.toUpperCase();
+    if (celCache[key]) return celCache[key];
+    const r   = await fetch(BASE + key);
+    if (!r.ok) throw new Error('missing: ' + key);
+    const raw = new Uint8Array(await r.arrayBuffer());
+    celCache[key] = raw.slice(800, 800 + 64000); // skip 800-byte header
+    return celCache[key];
+  }
+
+  // ── BLITTERS ─────────────────────────────────────────────────────────────────
+
+  // Blit one 320×200 CEL tile to pix at screen offset (dx, dy)
+  function blitTile(cel, dx, dy) {
+    for (let row = 0; row < TH; row++) {
+      let si = row * TW;
+      let di = ((dy + row) * SW + dx) * 4;
+      for (let col = 0; col < TW; col++, si++, di += 4) {
+        const pi = cel[si] * 3;
+        pix[di]   = palette[pi];
+        pix[di+1] = palette[pi + 1];
+        pix[di+2] = palette[pi + 2];
+        pix[di+3] = 255;
+      }
+    }
+  }
+
+  // Blit one 320×200 CEL tile but skip pixels where panelMask === src palette idx
+  // Used for UI panel rows beyond screen edge (crop to screen)
+  function blitTileCrop(cel, dx, dy, maxRows) {
+    const rows = Math.min(TH, maxRows);
+    for (let row = 0; row < rows; row++) {
+      let si = row * TW;
+      let di = ((dy + row) * SW + dx) * 4;
+      for (let col = 0; col < TW; col++, si++, di += 4) {
+        const pi = cel[si] * 3;
+        pix[di]   = palette[pi];
+        pix[di+1] = palette[pi + 1];
+        pix[di+2] = palette[pi + 2];
+        pix[di+3] = 255;
+      }
+    }
+  }
+
+  // Composite four tiles to build the 640×400 character area
+  function blitChar4(k1, k2, k3, k4) {
+    const t1 = celCache[k1], t2 = celCache[k2];
+    const t3 = celCache[k3], t4 = celCache[k4];
+    if (t1) blitTile(t1,   0,   0);
+    if (t2) blitTile(t2, TW,   0);
+    if (t3) blitTile(t3,   0, TH);
+    if (t4) blitTile(t4, TW, TH);
+  }
+
+  // Fill a rectangle with a solid RGB colour
+  function fillRect(x, y, w, h, r, g, b) {
+    for (let row = y; row < y + h; row++) {
+      let di = (row * SW + x) * 4;
+      for (let col = 0; col < w; col++, di += 4) {
+        pix[di]=r; pix[di+1]=g; pix[di+2]=b; pix[di+3]=255;
+      }
+    }
+  }
+
+  // Tiny bitmap font for overlay text (5×7, printable ASCII 32-126)
+  const FONT_W = 5, FONT_H = 7;
+  const FONT_DATA = (() => {
+    // Compact 5-bit per row encoding for ASCII 32-126
+    const glyphs = {
+      ' ':[[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]],
+      'A':[[0,1,1,0,0],[1,0,0,1,0],[1,0,0,1,0],[1,1,1,1,0],[1,0,0,1,0],[1,0,0,1,0],[0,0,0,0,0]],
+      'B':[[1,1,1,0,0],[1,0,0,1,0],[1,1,1,0,0],[1,0,0,1,0],[1,0,0,1,0],[1,1,1,0,0],[0,0,0,0,0]],
+      'C':[[0,1,1,1,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[0,1,1,1,0],[0,0,0,0,0]],
+      'D':[[1,1,1,0,0],[1,0,0,1,0],[1,0,0,1,0],[1,0,0,1,0],[1,0,0,1,0],[1,1,1,0,0],[0,0,0,0,0]],
+      'E':[[1,1,1,1,0],[1,0,0,0,0],[1,1,1,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,0],[0,0,0,0,0]],
+      'F':[[1,1,1,1,0],[1,0,0,0,0],[1,1,1,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[0,0,0,0,0]],
+      'G':[[0,1,1,1,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,1,1,0],[1,0,0,1,0],[0,1,1,1,0],[0,0,0,0,0]],
+      'H':[[1,0,0,1,0],[1,0,0,1,0],[1,1,1,1,0],[1,0,0,1,0],[1,0,0,1,0],[1,0,0,1,0],[0,0,0,0,0]],
+      'I':[[1,1,1,0,0],[0,1,0,0,0],[0,1,0,0,0],[0,1,0,0,0],[0,1,0,0,0],[1,1,1,0,0],[0,0,0,0,0]],
+      'J':[[0,0,1,1,0],[0,0,0,1,0],[0,0,0,1,0],[0,0,0,1,0],[1,0,0,1,0],[0,1,1,0,0],[0,0,0,0,0]],
+      'K':[[1,0,0,1,0],[1,0,1,0,0],[1,1,0,0,0],[1,0,1,0,0],[1,0,0,1,0],[1,0,0,1,0],[0,0,0,0,0]],
+      'L':[[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,0],[0,0,0,0,0]],
+      'M':[[1,0,0,0,1],[1,1,0,1,1],[1,0,1,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[0,0,0,0,0]],
+      'N':[[1,0,0,0,1],[1,1,0,0,1],[1,0,1,0,1],[1,0,0,1,1],[1,0,0,0,1],[1,0,0,0,1],[0,0,0,0,0]],
+      'O':[[0,1,1,0,0],[1,0,0,1,0],[1,0,0,1,0],[1,0,0,1,0],[1,0,0,1,0],[0,1,1,0,0],[0,0,0,0,0]],
+      'P':[[1,1,1,0,0],[1,0,0,1,0],[1,0,0,1,0],[1,1,1,0,0],[1,0,0,0,0],[1,0,0,0,0],[0,0,0,0,0]],
+      'Q':[[0,1,1,0,0],[1,0,0,1,0],[1,0,0,1,0],[1,0,1,1,0],[1,0,0,1,0],[0,1,1,1,0],[0,0,0,0,0]],
+      'R':[[1,1,1,0,0],[1,0,0,1,0],[1,0,0,1,0],[1,1,1,0,0],[1,0,1,0,0],[1,0,0,1,0],[0,0,0,0,0]],
+      'S':[[0,1,1,1,0],[1,0,0,0,0],[1,0,0,0,0],[0,1,1,0,0],[0,0,0,1,0],[1,1,1,0,0],[0,0,0,0,0]],
+      'T':[[1,1,1,1,1],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,0,0,0]],
+      'U':[[1,0,0,1,0],[1,0,0,1,0],[1,0,0,1,0],[1,0,0,1,0],[1,0,0,1,0],[0,1,1,0,0],[0,0,0,0,0]],
+      'V':[[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[0,1,0,1,0],[0,0,1,0,0],[0,0,0,0,0]],
+      'W':[[1,0,0,0,1],[1,0,0,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,1,0,1,1],[1,0,0,0,1],[0,0,0,0,0]],
+      'X':[[1,0,0,0,1],[0,1,0,1,0],[0,0,1,0,0],[0,0,1,0,0],[0,1,0,1,0],[1,0,0,0,1],[0,0,0,0,0]],
+      'Y':[[1,0,0,0,1],[0,1,0,1,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,0,0,0]],
+      'Z':[[1,1,1,1,1],[0,0,0,1,0],[0,0,1,0,0],[0,1,0,0,0],[1,0,0,0,0],[1,1,1,1,1],[0,0,0,0,0]],
+      '0':[[0,1,1,0,0],[1,0,0,1,0],[1,0,1,1,0],[1,1,0,1,0],[1,0,0,1,0],[0,1,1,0,0],[0,0,0,0,0]],
+      '1':[[0,1,0,0,0],[1,1,0,0,0],[0,1,0,0,0],[0,1,0,0,0],[0,1,0,0,0],[1,1,1,0,0],[0,0,0,0,0]],
+      '2':[[0,1,1,0,0],[1,0,0,1,0],[0,0,0,1,0],[0,0,1,0,0],[0,1,0,0,0],[1,1,1,1,0],[0,0,0,0,0]],
+      '3':[[1,1,1,0,0],[0,0,0,1,0],[0,1,1,0,0],[0,0,0,1,0],[0,0,0,1,0],[1,1,1,0,0],[0,0,0,0,0]],
+      '4':[[0,0,1,1,0],[0,1,0,1,0],[1,0,0,1,0],[1,1,1,1,0],[0,0,0,1,0],[0,0,0,1,0],[0,0,0,0,0]],
+      '5':[[1,1,1,1,0],[1,0,0,0,0],[1,1,1,0,0],[0,0,0,1,0],[0,0,0,1,0],[1,1,1,0,0],[0,0,0,0,0]],
+      '6':[[0,1,1,0,0],[1,0,0,0,0],[1,1,1,0,0],[1,0,0,1,0],[1,0,0,1,0],[0,1,1,0,0],[0,0,0,0,0]],
+      '7':[[1,1,1,1,0],[0,0,0,1,0],[0,0,1,0,0],[0,1,0,0,0],[0,1,0,0,0],[0,1,0,0,0],[0,0,0,0,0]],
+      '8':[[0,1,1,0,0],[1,0,0,1,0],[0,1,1,0,0],[1,0,0,1,0],[1,0,0,1,0],[0,1,1,0,0],[0,0,0,0,0]],
+      '9':[[0,1,1,0,0],[1,0,0,1,0],[1,0,0,1,0],[0,1,1,1,0],[0,0,0,1,0],[0,1,1,0,0],[0,0,0,0,0]],
+      ':':[[0,0,0,0,0],[0,1,0,0,0],[0,1,0,0,0],[0,0,0,0,0],[0,1,0,0,0],[0,1,0,0,0],[0,0,0,0,0]],
+      '/':[[0,0,0,1,0],[0,0,1,0,0],[0,0,1,0,0],[0,1,0,0,0],[0,1,0,0,0],[1,0,0,0,0],[0,0,0,0,0]],
+      '-':[[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[1,1,1,1,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]],
+      '.':[[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,1,0,0,0],[0,1,0,0,0],[0,0,0,0,0]],
+      ',':[[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,1,0,0,0],[0,0,1,0,0],[0,0,0,0,0]],
+      '!':[[0,1,0,0,0],[0,1,0,0,0],[0,1,0,0,0],[0,1,0,0,0],[0,0,0,0,0],[0,1,0,0,0],[0,0,0,0,0]],
+      '(':[[0,0,1,0,0],[0,1,0,0,0],[1,0,0,0,0],[1,0,0,0,0],[0,1,0,0,0],[0,0,1,0,0],[0,0,0,0,0]],
+      ')':[[1,0,0,0,0],[0,1,0,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,1,0,0,0],[1,0,0,0,0],[0,0,0,0,0]],
+    };
+    return glyphs;
+  })();
+
+  function drawText(text, x, y, r, g, b) {
+    for (let ci = 0; ci < text.length; ci++) {
+      const ch = text[ci].toUpperCase();
+      const glyph = FONT_DATA[ch] || FONT_DATA[' '];
+      for (let row = 0; row < FONT_H; row++) {
+        for (let col = 0; col < FONT_W; col++) {
+          if (glyph[row][col]) {
+            const sx = x + ci * (FONT_W + 1) + col;
+            const sy = y + row;
+            if (sx >= 0 && sx < SW && sy >= 0 && sy < SH) {
+              const di = (sy * SW + sx) * 4;
+              pix[di]   = r;
+              pix[di+1] = g;
+              pix[di+2] = b;
+              pix[di+3] = 255;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // ── GAME STATE ───────────────────────────────────────────────────────────────
+
+  // Direction constants: 1=N 2=E 3=S 4=W  (from Pascal source: sr=0..5)
+  const DIR_NAME = ['','NORTH','EAST','SOUTH','WEST'];
+  const DIR_DX   = [0, 0, 1, 0,-1];
+  const DIR_DY   = [0,-1, 0, 1, 0];
+
+  // 10×10 dungeon map (0=floor, 1=wall)
+  const MAP = [
+    [1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,1,0,0,0,0,1],
+    [1,0,1,0,0,0,1,0,0,1],
+    [1,0,0,0,1,0,0,0,0,1],
+    [1,1,0,1,1,1,0,1,1,1],
+    [1,0,0,0,0,0,0,0,0,1],
+    [1,0,1,0,1,0,1,0,0,1],
+    [1,0,0,0,0,0,0,0,0,1],
+    [1,0,0,1,0,0,0,0,0,1],
+    [1,1,1,1,1,1,1,1,1,1],
+  ];
+
+  const state = {
+    x: 1, y: 1,  // grid position
+    s: 3,        // direction 1=N 2=E 3=S 4=W
+    busy: false, // in animation
+    hp: 20, hpMax: 20,
+    mp: 10, mpMax: 10,
+    msg: 'STONE TOWERS II',
+  };
+
+  // CEL file sets for each character pose
+  const POSE = {
+    back : ['CHB1.CEL','CHB2.CEL','CHB3.CEL','CHB4.CEL'],
+    fwd1 : ['CHF11.CEL','CHF12.CEL','CHF13.CEL','CHF14.CEL'],
+    fwd2 : ['CHF21.CEL','CHF22.CEL','CHF23.CEL','CHF24.CEL'],
+    left : ['CHL1.CEL','CHL2.CEL','CHL3.CEL','CHL4.CEL'],
+    right: ['CHR1.CEL','CHR2.CEL','CHR3.CEL','CHR4.CEL'],
+  };
+
+  let curPose = 'back';  // currently displayed pose
+  let walkPhase = 0;      // alternates fwd1 ↔ fwd2
+
+  // ── RENDERING ────────────────────────────────────────────────────────────────
+
+  function render() {
+    // 1. Character area (640×400) — four composited CEL tiles
+    const keys = POSE[curPose];
+    blitChar4(...keys);
+
+    // 2. UI bar (640×80 at y=400) — top 80 rows of PAN1+PAN2 CEL
+    const pan1 = celCache['PAN1.CEL'];
+    const pan2 = celCache['PAN2.CEL'];
+    if (pan1) blitTileCrop(pan1,   0, 400, SH - 400);
+    if (pan2) blitTileCrop(pan2, TW, 400, SH - 400);
+
+    // If UI panels unavailable, fill with a dark bar
+    if (!pan1 && !pan2) fillRect(0, 400, SW, 80, 10, 8, 5);
+
+    // 3. HUD overlay text (drawn on top of panel area)
+    const panY = 406;
+
+    // Position and direction
+    drawText(`X:${state.x} Y:${state.y}  FACING ${DIR_NAME[state.s]}`, 8, panY, 180, 140, 60);
+
+    // HP / MP bars
+    const hpLabel = `HP ${state.hp}/${state.hpMax}`;
+    const mpLabel = `MP ${state.mp}/${state.mpMax}`;
+    drawText(hpLabel, 8, panY + 12, 200, 80, 60);
+    drawText(mpLabel, 8, panY + 22, 80, 140, 200);
+
+    // Message line
+    if (state.msg) {
+      drawText(state.msg, 8, panY + 36, 160, 130, 70);
+    }
+
+    // Mini-map (top-right of UI bar, 50×50 cells)
+    const MX = SW - 90, MY = 402;
+    const CELL = 8;
+    for (let my = 0; my < MAP.length; my++) {
+      for (let mx = 0; mx < MAP[my].length; mx++) {
+        const px = MX + mx * CELL;
+        const py = MY + my * CELL;
+        if (px + CELL > SW || py + CELL > SH) continue;
+        if (MAP[my][mx] === 1) {
+          fillRect(px, py, CELL - 1, CELL - 1, 30, 22, 10);
+        } else {
+          fillRect(px, py, CELL - 1, CELL - 1, 60, 45, 20);
+        }
+      }
+    }
+    // Player dot on mini-map
+    const pdx = MX + state.x * CELL + 2;
+    const pdy = MY + state.y * CELL + 2;
+    fillRect(pdx, pdy, 4, 4, 220, 160, 60);
+
+    ctx.putImageData(imgData, 0, 0);
+  }
+
+  // ── ACTIONS ──────────────────────────────────────────────────────────────────
+
+  function canWalk(nx, ny) {
+    return nx >= 0 && ny >= 0 && ny < MAP.length && nx < MAP[0].length
+           && MAP[ny][nx] === 0;
+  }
+
+  function moveForward() {
+    if (state.busy) return;
+    const nx = state.x + DIR_DX[state.s];
+    const ny = state.y + DIR_DY[state.s];
+    if (!canWalk(nx, ny)) {
+      state.msg = 'BLOCKED.';
+      render();
+      return;
+    }
+    state.busy = true;
+    // Walk frame 1
+    curPose = walkPhase === 0 ? 'fwd1' : 'fwd2';
+    walkPhase ^= 1;
+    render();
+    setTimeout(() => {
+      state.x = nx; state.y = ny;
+      state.msg = '';
+      curPose = 'back';
+      state.busy = false;
+      render();
+    }, 220);
+  }
+
+  function moveBack() {
+    if (state.busy) return;
+    const nx = state.x - DIR_DX[state.s];
+    const ny = state.y - DIR_DY[state.s];
+    if (!canWalk(nx, ny)) {
+      state.msg = 'BLOCKED.';
+      render();
+      return;
+    }
+    state.busy = true;
+    curPose = 'fwd1'; render();
+    setTimeout(() => {
+      state.x = nx; state.y = ny;
+      state.msg = '';
+      curPose = 'back';
+      state.busy = false;
+      render();
+    }, 220);
+  }
+
+  function turnLeft() {
+    if (state.busy) return;
+    state.s = state.s === 1 ? 4 : state.s - 1;
+    state.busy = true;
+    curPose = 'left'; render();
+    setTimeout(() => {
+      curPose = 'back';
+      state.busy = false;
+      state.msg = '';
+      render();
+    }, 250);
+  }
+
+  function turnRight() {
+    if (state.busy) return;
+    state.s = state.s === 4 ? 1 : state.s + 1;
+    state.busy = true;
+    curPose = 'right'; render();
+    setTimeout(() => {
+      curPose = 'back';
+      state.busy = false;
+      state.msg = '';
+      render();
+    }, 250);
+  }
+
+  // ── INPUT ────────────────────────────────────────────────────────────────────
+
+  document.addEventListener('keydown', e => {
+    switch (e.code) {
+      case 'KeyW': case 'ArrowUp':                      e.preventDefault(); moveForward(); break;
+      case 'KeyS': case 'ArrowDown':                    e.preventDefault(); moveBack();    break;
+      case 'KeyA': case 'ArrowLeft': case 'KeyQ':       e.preventDefault(); turnLeft();   break;
+      case 'KeyD': case 'ArrowRight': case 'KeyE':      e.preventDefault(); turnRight();  break;
+    }
+  });
+
+  // ── INIT ─────────────────────────────────────────────────────────────────────
+
+  async function init() {
+    const pbar   = document.getElementById('st2-pbar');
+    const status = document.getElementById('st2-status');
+
+    const allCELs = [
+      ...POSE.back, ...POSE.fwd1, ...POSE.fwd2,
+      ...POSE.left, ...POSE.right,
+      'PAN1.CEL', 'PAN2.CEL',
+    ];
+    const total  = allCELs.length + 1; // +1 for palette
+    let   loaded = 0;
+
+    const tick = () => {
+      loaded++;
+      pbar.style.width = Math.round(loaded / total * 100) + '%';
+    };
+
+    // Load palette
+    status.textContent = 'loading palette…';
+    await loadPalette();
+    tick();
+
+    // Load CEL files
+    for (const name of allCELs) {
+      status.textContent = 'loading ' + name.toLowerCase() + '…';
+      try { await loadCEL(name); } catch (e) { console.warn(e.message); }
+      tick();
+    }
+
+    // Hide overlay, draw first frame
+    document.getElementById('st2-overlay').style.display = 'none';
+    render();
+  }
+
+  init().catch(console.error);
+  </script>
+
+</body>
+</html>
