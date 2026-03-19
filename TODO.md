@@ -10,6 +10,10 @@ Přehled všeho nalezeného v původních zdrojácích a stav zpracování.
 - [x] **Dungeon Walker** (`walker.html`) — raycasting engine z `ENGINE.PAS`, 20×20 mapa, DDA renderer, procedurální textury, kompas HUD
 - [x] **The Adventure** (`adventure.html`) — port `STONET.PAS`, inventory, HP/MP, NPCs, procedurální grafika
 - [x] **The Adventure — Original Graphics** (`original.html`) — stejná hra, 129 originálních GIF87a souborů z roku 1995
+- [x] **Hybrid 1** (`hybrid1.html`) — 3D raycasting + 1995 GIF artwork + plné RPG z adventure
+- [x] **Hybrid 2** (`hybrid2.html`) — ikony předmětů v inventáři, kontextové hinty u crosshairu
+- [x] **Hybrid 3** (`hybrid3.html`) — opravený oheň, mrtvý netopýr/skřet na zemi, sebíratelný diamant, železná brána
+- [x] **Hybrid 4** (`hybrid4.html`) — mrtvý netopýr zmizí po sebrání, kostlivec leží na zemi od začátku
 
 ### Rozcestník (`index.html`)
 - [x] Karty tří her s popisem a ovládáním
@@ -25,6 +29,7 @@ Přehled všeho nalezeného v původních zdrojácích a stav zpracování.
   - DEMO.FLI (březen 1997 — game demo, poslední stonet1 artefakt)
 - [x] **Stone Towers II sekce** — popis + CHB1–4 portréty postav + 11 herních screenshotů ze stonet2
 - [x] **Development Timeline** — 1992 → 1995 → 1996 → 1997 → 1998–99 → 2025
+- [x] **Redesign rozcestníku** — 5-sloupcový grid (Walker, Adventure, Original, DOS, ST II) + samostatná sekce hybrid vydání (H4→H1, H4 doporučená)
 
 ### Infrastruktura
 - [x] `← back to menu` odkaz ve všech třech hrách
@@ -90,7 +95,7 @@ Moderní prohlížeče to nativně neumí přehrát.
 
 - [x] **Prozkoumat stonet2 Pascal zdroje** — pochopit herní logiku v porovnání s stonet1
 - [x] **Webový port stonet2** — `stonet2.html`: CEL loader + CH.COL paleta, 4×320×200 tile compositor, CHB/CHF/CHL/CHR animace, PAN UI, mini-mapa, pohyb po gridu
-- [x] **Přidat kartu stonet2 na rozcestník** — karta #7
+- [x] **Přidat kartu stonet2 na rozcestník** — karta #5 po redesignu
 
 ---
 
@@ -107,8 +112,8 @@ Moderní prohlížeče to nativně neumí přehrát.
 
 ## 🖼️ Galerie — rozšíření
 
-- [ ] **Lightbox pro galerii** — kliknutím na BMP/GIF zobrazit ve fullscreen překryvu
-- [ ] **129 GIF souborů z roku 1995** — teď jsou použity jen ve hře; zvážit galerii všech scén (`original-dos/stonet1/STONET/*.GIF`) jako archiv herního artworu
+- [x] **Lightbox pro galerii** — kliknutím na BMP/GIF zobrazit ve fullscreen překryvu (`gallery.html`)
+- [x] **129 GIF souborů z roku 1995** — `scenes.html`: lazy loading, 18 oblastí, lightbox s klávesnicovou navigací (←/→/Esc)
 - [ ] **stonet2 MAPA1.GIF / MAPA2.GIF** — malé soubory (1.2 KB), pravděpodobně minimapy; zobrazit s vysvětlením
 
 ---
@@ -131,4 +136,4 @@ Moderní prohlížeče to nativně neumí přehrát.
 
 ---
 
-*Naposledy aktualizováno: 2026-03-16*
+*Naposledy aktualizováno: 2026-03-19*
