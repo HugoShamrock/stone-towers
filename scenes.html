@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>129 VGA Scenes — Stone Towers</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .scenes-wrap {
+      width: 100%;
+      max-width: 900px;
+      padding: 16px 24px 64px;
+    }
+
+    .scenes-intro {
+      font-size: 11px;
+      color: #5a4820;
+      line-height: 1.8;
+      max-width: 680px;
+      margin-bottom: 28px;
+    }
+
+    /* ── AREA SECTION ── */
+    .area-section {
+      margin-bottom: 36px;
+    }
+
+    .area-title {
+      font-size: 11px;
+      font-weight: bold;
+      color: #7a5c20;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #1e1608;
+    }
+
+    .area-count {
+      font-weight: normal;
+      color: #3a2c14;
+      font-size: 9px;
+      letter-spacing: 1px;
+      margin-left: 8px;
+    }
+
+    /* ── SCENE GRID ── */
+    .scene-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 6px;
+    }
+
+    .scene-item {
+      background: #0a0806;
+      border: 1px solid #1a1206;
+      overflow: hidden;
+      cursor: zoom-in;
+      transition: border-color 0.15s;
+    }
+
+    .scene-item:hover { border-color: #4a3412; }
+
+    .scene-item img {
+      width: 100%;
+      display: block;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      aspect-ratio: 320/200;
+      background: #050402;
+    }
+
+    .scene-label {
+      padding: 4px 6px;
+      font-size: 9px;
+      color: #3a2c14;
+      letter-spacing: 1px;
+    }
+
+    /* ── SMALL ITEMS (non 320×200) ── */
+    .scene-item.small img {
+      object-fit: contain;
+      background: #0a0806;
+    }
+
+    /* ── LIGHTBOX ── */
+    .lb-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.94);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      cursor: zoom-out;
+    }
+    .lb-overlay.active { display: flex; }
+
+    .lb-img {
+      max-width: 88vw;
+      max-height: 84vh;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      border: 1px solid #3a2810;
+      box-shadow: 0 0 80px rgba(0,0,0,0.9);
+      cursor: default;
+    }
+
+    .lb-caption {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      color: #6a5028;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .lb-close {
+      position: fixed;
+      top: 18px;
+      right: 22px;
+      font-size: 18px;
+      color: #4a3412;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      user-select: none;
+    }
+    .lb-close:hover { color: #c0900a; }
+
+    .lb-nav {
+      position: fixed;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 24px;
+      color: #3a2810;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      user-select: none;
+      padding: 12px;
+      transition: color 0.15s;
+    }
+    .lb-nav:hover { color: #c0900a; }
+    #lb-prev { left: 12px; }
+    #lb-next { right: 12px; }
+
+    @media (max-width: 600px) {
+      .scene-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a class="logo" href="index.html">STONE TOWERS</a>
+    <div class="tagline">czech dungeon crawler &nbsp;·&nbsp; original 1995 &nbsp;·&nbsp; web port 2025</div>
+  </header>
+
+  <div class="back-link"><a href="gallery.html">← back to gallery</a></div>
+
+  <p class="section-title">— 129 original VGA scenes —</p>
+
+  <div class="scenes-wrap">
+
+    <p class="scenes-intro">
+      All 129 original GIF87a artwork files from <strong style="color:#6a4c18">Stone Towers</strong> (1995).
+      320×200 VGA scenes hand-painted by the original authors — dungeon corridors, rooms, items, characters.
+      Each group (area code) corresponds to a dungeon location. Click any image to view full size.
+    </p>
+
+    <div id="areas"></div>
+
+  </div>
+
+  <!-- lightbox -->
+  <div class="lb-overlay" id="lb">
+    <span class="lb-close" id="lb-close">✕</span>
+    <span class="lb-nav" id="lb-prev">‹</span>
+    <img class="lb-img" id="lb-img" src="" alt="">
+    <span class="lb-nav" id="lb-next">›</span>
+    <div class="lb-caption" id="lb-cap"></div>
+  </div>
+
+  <footer>
+    <div class="footer-left">
+      original game &copy; <b>raist</b> &nbsp;·&nbsp; <b>ernie</b> &nbsp;·&nbsp; <b>dusty</b>
+    </div>
+    <div class="footer-right">
+      <a href="gallery.html">gallery</a>
+      <span class="footer-sep">·</span>
+      <a href="index.html">hub</a>
+      <span class="footer-sep">·</span>
+      <a href="https://github.com/HugoShamrock/stone-towers" target="_blank">GitHub</a>
+    </div>
+  </footer>
+
+  <script>
+  'use strict';
+
+  const BASE = 'original-dos/stonet1/STONET/';
+
+  // All 129 GIF IDs grouped exactly as in the original game source
+  const AREAS = [
+    { code: '115', label: 'Area 115',  ids: ['11511','11512','11521','11531','11541'] },
+    { code: '116', label: 'Area 116',  ids: ['11611','11621','11631','11632','11633','11641'] },
+    { code: '125', label: 'Area 125',  ids: ['12511','12521','12522','12523','12524','12525','12526','12527','12528','12531','12541'] },
+    { code: '135', label: 'Area 135',  ids: ['13511','13521','13531','13541','13542'] },
+    { code: '141', label: 'Area 141',  ids: ['14111','14112','14113','14121','14131','14141'] },
+    { code: '142', label: 'Area 142',  ids: ['14211','14221','14231','14241'] },
+    { code: '143', label: 'Area 143',  ids: ['14311','14312','14313','14314','14315','14316','14317','14321','14331','14341'] },
+    { code: '144', label: 'Area 144',  ids: ['14411','14421','14431','14432','14441'] },
+    { code: '145', label: 'Area 145',  ids: ['14511','14521','14522','14523','14524','14525','14526','14527','14528','14531','14541'] },
+    { code: '146', label: 'Area 146',  ids: ['14611','14612','14621','14631','14641'] },
+    { code: '154', label: 'Area 154',  ids: ['15411','15421','15431','15441'] },
+    { code: '156', label: 'Area 156',  ids: ['15611','15621','15631','15641'] },
+    { code: '157', label: 'Area 157',  ids: ['15711','15721','15731','15732','15733','15734','15735','15736','15737','15738','15741'] },
+    { code: '164', label: 'Area 164',  ids: ['16411','16412','16413','16414','16415','16416','16417','16418','16419','16421','16431','16441'] },
+    { code: '165', label: 'Area 165',  ids: ['16511','16521','16531','16541'] },
+    { code: '166', label: 'Area 166',  ids: ['16611','16621','16622','16631','16641'] },
+    { code: '500', label: 'Interface & UI',
+      ids: ['50000','50001','50002','50003','50004','50005','50006','50007','50008','50009','50010','50011','51001','52001'] },
+    { code: '530', label: 'Items',     ids: ['53001','53002','53003','53004','53005','53006','53007'] },
+  ];
+
+  // Flat ordered list of all IDs for lightbox navigation
+  const ALL_IDS = AREAS.flatMap(a => a.ids);
+
+  // ── BUILD DOM ──────────────────────────────────────────────────────────────
+
+  const container = document.getElementById('areas');
+
+  AREAS.forEach(area => {
+    const section = document.createElement('div');
+    section.className = 'area-section';
+
+    const title = document.createElement('div');
+    title.className = 'area-title';
+    title.innerHTML = area.label + `<span class="area-count">${area.ids.length} scene${area.ids.length !== 1 ? 's' : ''}</span>`;
+    section.appendChild(title);
+
+    const grid = document.createElement('div');
+    grid.className = 'scene-grid';
+
+    area.ids.forEach(id => {
+      const item = document.createElement('div');
+      item.className = 'scene-item';
+      item.dataset.id = id;
+
+      const img = document.createElement('img');
+      img.alt = id + '.GIF';
+      img.dataset.src = BASE + id + '.GIF'; // lazy
+      img.src = '';
+
+      const label = document.createElement('div');
+      label.className = 'scene-label';
+      label.textContent = id + '.GIF';
+
+      item.appendChild(img);
+      item.appendChild(label);
+      item.addEventListener('click', () => openLightbox(id));
+      grid.appendChild(item);
+    });
+
+    section.appendChild(grid);
+    container.appendChild(section);
+  });
+
+  // ── LAZY LOADING ───────────────────────────────────────────────────────────
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const img = entry.target;
+        if (img.dataset.src) {
+          img.src = img.dataset.src;
+          delete img.dataset.src;
+          observer.unobserve(img);
+        }
+      }
+    });
+  }, { rootMargin: '200px' });
+
+  document.querySelectorAll('.scene-item img').forEach(img => observer.observe(img));
+
+  // ── LIGHTBOX ───────────────────────────────────────────────────────────────
+
+  const lb     = document.getElementById('lb');
+  const lbImg  = document.getElementById('lb-img');
+  const lbCap  = document.getElementById('lb-cap');
+  let   lbIdx  = 0;
+
+  function openLightbox(id) {
+    lbIdx = ALL_IDS.indexOf(id);
+    showLightbox(lbIdx);
+    lb.classList.add('active');
+  }
+
+  function showLightbox(idx) {
+    const id = ALL_IDS[idx];
+    lbImg.src = BASE + id + '.GIF';
+    lbCap.textContent = id + '.GIF  ·  ' + (idx + 1) + ' / ' + ALL_IDS.length;
+  }
+
+  function closeLightbox() {
+    lb.classList.remove('active');
+    lbImg.src = '';
+  }
+
+  function navPrev() { lbIdx = (lbIdx - 1 + ALL_IDS.length) % ALL_IDS.length; showLightbox(lbIdx); }
+  function navNext() { lbIdx = (lbIdx + 1) % ALL_IDS.length; showLightbox(lbIdx); }
+
+  document.getElementById('lb-close').addEventListener('click', closeLightbox);
+  document.getElementById('lb-prev').addEventListener('click', e => { e.stopPropagation(); navPrev(); });
+  document.getElementById('lb-next').addEventListener('click', e => { e.stopPropagation(); navNext(); });
+  lb.addEventListener('click', e => { if (e.target === lb) closeLightbox(); });
+
+  document.addEventListener('keydown', e => {
+    if (!lb.classList.contains('active')) return;
+    if (e.key === 'Escape')      closeLightbox();
+    else if (e.key === 'ArrowLeft')  navPrev();
+    else if (e.key === 'ArrowRight') navNext();
+  });
+  </script>
+
+</body>
+</html>
