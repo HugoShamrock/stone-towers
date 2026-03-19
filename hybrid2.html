@@ -66,12 +66,6 @@ const GIF_BASE = 'original-dos/stonet1/STONET/';
 
 // GIFs to preload: creature sprites + item icons
 const LOAD_GIFS = [
-  '12524','12525','12526',          // bat frames
-  '14315','14316','14317',          // wolf frames
-  '16411','16412',                  // goblin frames
-  '15732','15733','15734',          // druid frames (upper body)
-  '11632','11633',                  // firepit frames
-  '14522',                          // magpie
   '53001','53002','53003','53004','53005','53006','53007'  // item icons
 ];
 
@@ -114,19 +108,6 @@ function sampleGif(id, u, v) {
   return [p[i], p[i+1], p[i+2]];
 }
 
-// Return the GIF id to use for a sprite at the current tick
-function spriteGifId(id) {
-  const af = (tick / 8 | 0);
-  switch (id) {
-    case 'bat':     return ['12524','12525','12526'][af % 3];
-    case 'wolf':    return ['14315','14316','14317'][af % 3];
-    case 'goblin':  return ['16411','16412'][af % 2];
-    case 'druid':   return ['15732','15733','15734'][af % 3];
-    case 'firepit': return ['11632','11633'][af % 2];
-    case 'magpie':  return '14522';
-    default:        return null;
-  }
-}
 
 // ── MAP ───────────────────────────────────────────────────────────────────────
 
@@ -640,13 +621,101 @@ function spriteVisible(s) {
 
 // Returns [r,g,b] or null for transparent pixel at normalized (u,v)
 function spritePx(id, u, v) {
-  const gifId = spriteGifId(id);
-  if (gifId) {
-    const col = sampleGif(gifId, u, v);
-    if (col !== undefined) return col;  // null = transparent, [r,g,b] = opaque
-  }
-  // Fallback to procedural for skeleton/well (no GIF overlay)
   switch (id) {
+
+    case 'bat': {
+      const cu = u - 0.5;
+      const cv = v - 0.5 + Math.sin(tick * 0.12) * 0.06;
+      const wingW = 0.48 - Math.abs(cv) * 0.7;
+      if (Math.abs(cu) > wingW || wingW < 0) return null;
+      if (Math.abs(cu) < 0.12 && cv > -0.18 && cv < 0.18) return [45, 22, 55];
+      const fade = 1 - Math.abs(cu) / wingW;
+      if (fade < 0.1) return null;
+      return [75, 28, 88];
+    }
+
+    case 'wolf': {
+      const cu = u - 0.5;
+      if (v < 0.35) {
+        const earL = cu > -0.30 && cu < -0.14 && v < 0.14;
+        const earR = cu > 0.14  && cu < 0.30  && v < 0.14;
+        const head = Math.abs(cu) < 0.24 && v >= 0.06;
+        if (!earL && !earR && !head) return null;
+        if (Math.abs(cu + 0.09) < 0.045 && v > 0.18 && v < 0.26) return [200,180,50];
+        if (Math.abs(cu - 0.09) < 0.045 && v > 0.18 && v < 0.26) return [200,180,50];
+        return [100, 62, 28];
+      }
+      if (v >= 0.35 && v < 0.9) {
+        const bw = 0.30;
+        if (Math.abs(cu) > bw) return null;
+        if (v > 0.72) {
+          if (!(cu > -0.28 && cu < -0.08) && !(cu > 0.08 && cu < 0.28)) return null;
+        }
+        return [108, 70, 32];
+      }
+      return null;
+    }
+
+    case 'goblin': {
+      const cu = u - 0.5;
+      if (v < 0.28 && Math.abs(cu) < 0.22) {
+        if (Math.abs(cu + 0.09) < 0.045 && v > 0.12 && v < 0.20) return [220,20,20];
+        if (Math.abs(cu - 0.09) < 0.045 && v > 0.12 && v < 0.20) return [220,20,20];
+        return [50, 120, 40];
+      }
+      if (v >= 0.28 && v < 0.65 && Math.abs(cu) < 0.18) return [42, 105, 36];
+      if (v >= 0.65 && v < 0.82 && Math.abs(cu) < 0.20) return [80, 55, 20];
+      if (v >= 0.82 && v < 0.98) {
+        if ((cu > -0.20 && cu < -0.04) || (cu > 0.04 && cu < 0.20)) return [42, 105, 36];
+      }
+      return null;
+    }
+
+    case 'druid': {
+      const cu = u - 0.5;
+      const robeW = 0.09 + v * 0.38;
+      if (Math.abs(cu) > robeW) return null;
+      if (v < 0.26) {
+        if (Math.abs(cu + 0.08) < 0.055 && v > 0.13 && v < 0.20) return [0, 220, 200];
+        if (Math.abs(cu - 0.08) < 0.055 && v > 0.13 && v < 0.20) return [0, 220, 200];
+        return [55, 65, 88];
+      }
+      const stripe = Math.floor(v * 18) % 3;
+      return stripe===0 ? [48,56,78] : [66,75,98];
+    }
+
+    case 'magpie': {
+      const cu = u - 0.5;
+      if (v > 0.84 && Math.abs(cu) < 0.46) return [75, 58, 28];
+      if (v >= 0.30 && v < 0.80) {
+        const bw = 0.22 - (v - 0.30) * 0.18;
+        if (Math.abs(cu) < bw) {
+          if (v < 0.48 && Math.abs(cu - 0.07) < 0.04) return [190,170,18];
+          return [205, 185, 28];
+        }
+        if (Math.abs(cu) < bw + 0.16 && v > 0.42 && v < 0.72) return [175,155,18];
+      }
+      if (v < 0.32 && Math.abs(cu) < 0.14) {
+        if (Math.abs(cu - 0.07) < 0.04 && v > 0.14 && v < 0.24) return [30,30,30];
+        return [210, 195, 38];
+      }
+      return null;
+    }
+
+    case 'firepit': {
+      const cu = u - 0.5;
+      const flicker = Math.sin(tick * 0.15 + cu * 8) * 0.14 + Math.sin(tick * 0.23) * 0.06;
+      const flameH = 0.55 + flicker;
+      if (v > flameH) return null;
+      const fw = (1 - v / flameH) * 0.38;
+      if (Math.abs(cu) > fw) return null;
+      const fv = v / Math.max(0.01, flameH);
+      const r = 255;
+      const g = Math.max(0, Math.min(255, (190 - fv * 130 + Math.sin(tick * 0.22 + v * 9) * 28) | 0));
+      const b = fv < 0.25 ? Math.max(0, (70 - fv * 280) | 0) : 0;
+      return [r, g, b];
+    }
+
     case 'skeleton': {
       const cu = u - 0.5;
       if (v < 0.26 && Math.abs(cu) < 0.22) {
