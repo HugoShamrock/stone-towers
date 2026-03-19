@@ -14,7 +14,7 @@ A Czech indie DOS game originally written in **Turbo Pascal 7** for MS-DOS, deve
 | [**Dungeon Walker**](https://hugoshamrock.github.io/stone-towers/walker.html) | First-person 3D | Explore a 20×20 stone maze. DDA raycasting engine based on `ENGINE.PAS`. |
 | [**The Adventure**](https://hugoshamrock.github.io/stone-towers/adventure.html) | Point-and-click RPG | Navigate a dungeon, collect items, cast spells, solve puzzles. Procedural graphics. |
 | [**The Adventure — Original Graphics**](https://hugoshamrock.github.io/stone-towers/original.html) | Point-and-click RPG | Same game, rendered with the authentic 1995 VGA artwork (129 GIF files from the original archive). |
-| [**Hybrid**](https://hugoshamrock.github.io/stone-towers/hybrid.html) | First-person 3D RPG | 3D raycasting engine from Dungeon Walker combined with the original 1995 GIF artwork and full RPG mechanics from The Adventure. |
+| [**Hybrid**](https://hugoshamrock.github.io/stone-towers/hybrid1.html) | First-person 3D RPG | 3D raycasting engine from Dungeon Walker combined with the original 1995 GIF artwork and full RPG mechanics from The Adventure. |
 | [**Hybrid 2**](https://hugoshamrock.github.io/stone-towers/hybrid2.html) | First-person 3D RPG | Hybrid 1 + item icons from original GIFs in inventory, context-sensitive hints at crosshair. |
 | [**Stone Towers II**](https://hugoshamrock.github.io/stone-towers/stonet2.html) | Third-person RPG | Complete reimagining on a new 640×480 engine (1998–1999, never released). Original CEL character artwork (320×200 sprites composited to 640×400), web port from Pascal source (`453x.pas`, `LOST9.PAS`). |
 
@@ -54,7 +54,7 @@ index.html        — hub / landing page
 walker.html       — Dungeon Walker (first-person 3D)
 adventure.html    — The Adventure (procedural graphics)
 original.html     — The Adventure (original 1995 GIF artwork)
-hybrid.html       — Hybrid: 3D engine + original artwork + full RPG
+hybrid1.html       — Hybrid: 3D engine + original artwork + full RPG
 hybrid2.html      — Hybrid 2: Hybrid + item icons + crosshair hints
 stonet2.html      — Stone Towers II: third-person RPG, 640×480, CEL sprites
 story.html        — The Story (STONETOW.ERS, © 1995 WIZ)

@@ -92,6 +92,56 @@
     @media (max-width: 600px) {
       .st2-chars { grid-template-columns: repeat(2, 1fr); }
     }
+
+    /* ── LIGHTBOX ── */
+    .lb-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      cursor: zoom-out;
+    }
+    .lb-overlay.active { display: flex; }
+
+    .lb-img {
+      max-width: 92vw;
+      max-height: 88vh;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      border: 1px solid #3a2810;
+      box-shadow: 0 0 60px rgba(0,0,0,0.8);
+      cursor: default;
+    }
+
+    .lb-caption {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      color: #6a5028;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+
+    .lb-close {
+      position: fixed;
+      top: 20px;
+      right: 24px;
+      font-size: 20px;
+      color: #4a3412;
+      cursor: pointer;
+      letter-spacing: 2px;
+      font-family: 'Courier New', monospace;
+    }
+    .lb-close:hover { color: #c0900a; }
+
+    /* clickable images get cursor */
+    .gallery-hero, .st2-char img, .st2-screen img { cursor: zoom-in; }
   </style>
 </head>
 <body>
@@ -221,6 +271,13 @@
 
   </div>
 
+  <!-- lightbox -->
+  <div class="lb-overlay" id="lb">
+    <span class="lb-close" id="lb-close">✕</span>
+    <img class="lb-img" id="lb-img" src="" alt="">
+    <div class="lb-caption" id="lb-cap"></div>
+  </div>
+
   <footer>
     <div class="footer-left">
       original game &copy; <b>raist</b> &nbsp;·&nbsp; <b>ernie</b> &nbsp;·&nbsp; <b>dusty</b>
@@ -235,6 +292,38 @@
       <a href="https://github.com/HugoShamrock/stone-towers" target="_blank">GitHub</a>
     </div>
   </footer>
+
+  <script>
+  (function() {
+    const lb    = document.getElementById('lb');
+    const lbImg = document.getElementById('lb-img');
+    const lbCap = document.getElementById('lb-cap');
+
+    function open(src, caption) {
+      lbImg.src = src;
+      lbCap.textContent = caption || '';
+      lb.classList.add('active');
+    }
+
+    function close() {
+      lb.classList.remove('active');
+      lbImg.src = '';
+    }
+
+    document.getElementById('lb-close').addEventListener('click', close);
+    lb.addEventListener('click', e => { if (e.target === lb) close(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+
+    // Attach to all gallery images
+    document.querySelectorAll('.gallery-hero, .st2-char img, .st2-screen img').forEach(img => {
+      img.addEventListener('click', () => {
+        const cap = img.closest('.gallery-item, .st2-char, .st2-screen')
+          ?.querySelector('.img-caption, .char-label, .screen-label')?.textContent || img.alt;
+        open(img.src, cap);
+      });
+    });
+  })();
+  </script>
 
 </body>
 </html>

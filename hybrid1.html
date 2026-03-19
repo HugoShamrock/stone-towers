@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hybrid 1 — Stone Towers</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a0a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Courier New', monospace;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    canvas { display: block; cursor: crosshair; image-rendering: pixelated; }
+    #back {
+      margin-top: 10px;
+      font-size: 10px;
+      color: #3a2810;
+      letter-spacing: 1px;
+    }
+    #back a { color: #5a3e18; text-decoration: none; }
+    #back a:hover { color: #a07030; }
+  </style>
+</head>
+<body>
+  <canvas id="c" width="640" height="480"></canvas>
+  <div id="back"><a href="index.html">← back to menu</a></div>
+
+  <script>
+'use strict';
+
+// ── CONSTANTS ─────────────────────────────────────────────────────────────────
+
+const W     = 640;
+const H3D   = 400;
+const HUD_H = 80;
+const H     = H3D + HUD_H;   // 480
+const MSIZE = 11;
+const TEX   = 64;
+const FOG   = 9;
+
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+
+canvas.setAttribute('tabindex', '0');
+canvas.focus();
+
+// ── MAP ───────────────────────────────────────────────────────────────────────
+
+const BASE_MAP = [
+  [1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,0,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,0,1,1,1,1,1,1],
+  [1,1,1,1,0,1,0,1,1,1,1],
+  [1,0,0,1,0,1,0,1,1,1,1],
+  [1,0,1,1,0,0,0,1,1,1,1],
+  [1,1,1,1,1,0,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1],
+];
+
+// mutable copy
+let dynMap = BASE_MAP.map(row => row.slice());
+
+function isWall(x, y) {
+  const mx = x | 0, my = y | 0;
+  if (mx < 0 || mx >= MSIZE || my < 0 || my >= MSIZE) return true;
+  return dynMap[my][mx] === 1;
+}
+
+// ── PROCEDURAL TEXTURES ───────────────────────────────────────────────────────
+
+const textures = {};
+
+function hash(x, y) {
+  let v = (Math.imul(x, 1610612741) + Math.imul(y, 805306457)) | 0;
+  v ^= v >>> 17; v = Math.imul(v, 0x9e3779b9 | 0); v ^= v >>> 13;
+  return (v >>> 0) & 0xff;
+}
+
+function makeStoneTex(r0, g0, b0) {
+  const d = new Uint8ClampedArray(TEX * TEX * 4);
+  const BH = 16, BW = 32;
+  for (let ty = 0; ty < TEX; ty++) {
+    for (let tx = 0; tx < TEX; tx++) {
+      const row    = (ty / BH) | 0;
+      const bx     = (tx + (row & 1) * 16) % BW;
+      const by     = ty % BH;
+      const mortar = bx <= 1 || by <= 1;
+      const i = (ty * TEX + tx) * 4;
+      if (mortar) {
+        const n = hash(tx * 3, ty * 3) >> 3;
+        d[i]   = ((r0 * 0.35) | 0) + n;
+        d[i+1] = ((g0 * 0.35) | 0) + n;
+        d[i+2] = ((b0 * 0.35) | 0) + n;
+      } else {
+        const coarse = hash((tx >> 2) << 2, (ty >> 2) << 2) >> 1;
+        const fine   = hash(tx, ty) >> 4;
+        const v = coarse + fine;
+        d[i]   = Math.min(255, r0 + v);
+        d[i+1] = Math.min(255, g0 + v);
+        d[i+2] = Math.min(255, b0 + v);
+      }
+      d[i+3] = 255;
+    }
+  }
+  return d;
+}
+
+textures[1] = makeStoneTex(90, 88, 82);
+textures[2] = makeStoneTex(80, 58, 32);
+textures[3] = makeStoneTex(100, 28, 18);
+
+// ── PLAYER ────────────────────────────────────────────────────────────────────
+
+const player = {
+  x: 1.5, y: 6.5,
+  dirX: 0, dirY: -1,
+  planeX: 0.66, planeY: 0,
+};
+
+// ── GAME STATE ────────────────────────────────────────────────────────────────
+
+let hp, mana, dia;
+let batoh;
+let l1;
+let message = '';
+let messageLines = [];
+let messageTimer = 0;
+let tick = 0;
+let selectedSlot = -1;
+let gameState = 'title';
+let showMap = false;
+let prevGX = -1, prevGY = -1;
+let torchPhase = 0;
+
+const ITEM_NAMES  = ['','Red Apple','Gold Coin','Scroll','Dead Bat','Old Key','Magic Cross','Burning Torch'];
+const SPELL_COST  = [0,1,1,1,2,2];
+const SPELL_NAMES = ['Fire','Freeze','Flash','Death','Move'];
+
+function initGame() {
+  hp = 4; mana = 1; dia = 0;
+  batoh = [1, 0, 0, 0, 0, 0];
+  selectedSlot = -1;
+  message = ''; messageLines = []; messageTimer = 0;
+  tick = 0; torchPhase = 0;
+  showMap = false;
+
+  dynMap = BASE_MAP.map(row => row.slice());
+
+  player.x = 1.5; player.y = 6.5;
+  player.dirX = 0; player.dirY = -1;
+  player.planeX = 0.66; player.planeY = 0;
+
+  l1 = [];
+  for (let x = 0; x <= 9; x++) {
+    l1[x] = [];
+    for (let y = 0; y <= 9; y++) l1[x][y] = [0,0,0,0,0];
+  }
+
+  const rooms = [
+    [1,5],[1,6],[2,5],[3,5],
+    [4,1],[4,2],[4,3],[4,4],[4,5],[4,6],
+    [5,6],[5,7],
+    [6,4],[6,5],[6,6]
+  ];
+  for (const [rx,ry] of rooms) for (let z=1;z<=4;z++) l1[rx][ry][z] = 1;
+
+  l1[1][6][3] = 2;
+  l1[2][5][2] = 4;
+  for (let z=1;z<=4;z++) l1[3][5][z] = 0;
+  l1[4][3][1] = 6;
+  for (let z=1;z<=4;z++) l1[4][2][z] = 0;
+
+  prevGX = player.x | 0;
+  prevGY = player.y | 0;
+
+  showMsg('You stand at the edge of the dungeon...');
+}
+
+// ── INPUT ─────────────────────────────────────────────────────────────────────
+
+const keys = {};
+
+canvas.addEventListener('click', e => {
+  canvas.focus();
+  if (gameState === 'title') { initGame(); gameState = 'game'; return; }
+  if (gameState === 'gameover' || gameState === 'win') { initGame(); gameState = 'game'; return; }
+  if (gameState !== 'game') return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (W / rect.width);
+  const my = (e.clientY - rect.top)  * (H / rect.height);
+  handleHudClick(mx, my);
+});
+
+document.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+  if (gameState === 'title' && (e.code === 'Enter' || e.code === 'Space')) {
+    initGame(); gameState = 'game'; return;
+  }
+  if ((gameState === 'gameover' || gameState === 'win') && e.code === 'Enter') {
+    initGame(); gameState = 'game'; return;
+  }
+  if (gameState !== 'game') return;
+  if (e.code === 'KeyM') { showMap = !showMap; return; }
+  for (let i=1;i<=5;i++) { if (e.code===`Digit${i}`) { castSpell(i); return; } }
+  if (e.code === 'Space' || e.code === 'KeyF') { attackOrInteract(); return; }
+});
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+
+function handleHudClick(mx, my) {
+  const hy = H3D;
+  // Spell buttons row (y = hy+4 .. hy+30, x = 145..375, 5 buttons 46px wide each)
+  if (my >= hy+4 && my <= hy+30 && mx >= 145 && mx <= 375) {
+    const idx = Math.floor((mx - 145) / 46);
+    if (idx >= 0 && idx <= 4) { castSpell(idx+1); return; }
+  }
+  // Inventory slots (y = hy+36 .. hy+76, x = 10..310, 6 slots 50px wide)
+  if (my >= hy+36 && my <= hy+76 && mx >= 10 && mx <= 310) {
+    const slot = Math.floor((mx - 10) / 50);
+    if (slot >= 0 && slot < 6) {
+      if (selectedSlot === slot) { useItem(slot); selectedSlot = -1; }
+      else {
+        selectedSlot = slot;
+        if (batoh[slot]>0) showMsg('Selected: '+ITEM_NAMES[batoh[slot]]+'. Click again to use.');
+      }
+    }
+  }
+}
+
+// ── MOVEMENT ──────────────────────────────────────────────────────────────────
+
+const MOVE_SPD = 0.06;
+const ROT_SPD  = 0.04;
+
+function rotate(a) {
+  const cos = Math.cos(a), sin = Math.sin(a);
+  const dx = player.dirX, px = player.planeX;
+  player.dirX   = dx * cos - player.dirY  * sin;
+  player.dirY   = dx * sin + player.dirY  * cos;
+  player.planeX = px * cos - player.planeY * sin;
+  player.planeY = px * sin + player.planeY * cos;
+}
+
+function update(dt) {
+  if (gameState !== 'game') return;
+  torchPhase += dt * 4;
+  const ms = MOVE_SPD * dt * 60;
+  const rs = ROT_SPD  * dt * 60;
+  if (keys['KeyW'] || keys['ArrowUp']) {
+    if (!isWall(player.x + player.dirX * ms, player.y)) player.x += player.dirX * ms;
+    if (!isWall(player.x, player.y + player.dirY * ms)) player.y += player.dirY * ms;
+  }
+  if (keys['KeyS'] || keys['ArrowDown']) {
+    if (!isWall(player.x - player.dirX * ms, player.y)) player.x -= player.dirX * ms;
+    if (!isWall(player.x, player.y - player.dirY * ms)) player.y -= player.dirY * ms;
+  }
+  if (keys['KeyQ']) {
+    if (!isWall(player.x - player.planeX * ms, player.y)) player.x -= player.planeX * ms;
+    if (!isWall(player.x, player.y - player.planeY * ms)) player.y -= player.planeY * ms;
+  }
+  if (keys['KeyE']) {
+    if (!isWall(player.x + player.planeX * ms, player.y)) player.x += player.planeX * ms;
+    if (!isWall(player.x, player.y + player.planeY * ms)) player.y += player.planeY * ms;
+  }
+  if (keys['KeyA'] || keys['ArrowLeft'])  rotate(-rs);
+  if (keys['KeyD'] || keys['ArrowRight']) rotate(rs);
+
+  // Room-entry damage detection
+  const gx = player.x | 0;
+  const gy = player.y | 0;
+  if (gx !== prevGX || gy !== prevGY) {
+    prevGX = gx; prevGY = gy;
+    onEnterRoom(gx, gy);
+  }
+}
+
+function onEnterRoom(gx, gy) {
+  if (gx===2 && gy===5 && l1[2][5][2]===4) {
+    showMsg('A bat swoops at you! (-1 HP)');
+    hp = Math.max(0, hp-1);
+    if (hp <= 0) { gameState = 'gameover'; return; }
+  }
+  if (gx===4 && gy===3 && l1[4][3][1]===6) {
+    showMsg('The wolf lunges at you! (-1 HP)');
+    hp = Math.max(0, hp-1);
+    if (hp <= 0) { gameState = 'gameover'; return; }
+  }
+  if (gx===6 && gy===4 && l1[6][4][1]===1) {
+    showMsg('The goblin slashes at you! (-1 HP)');
+    hp = Math.max(0, hp-1);
+    if (hp <= 0) { gameState = 'gameover'; return; }
+  }
+}
+
+// ── COMBAT / INTERACT ─────────────────────────────────────────────────────────
+
+function pdist(ax, ay) {
+  return Math.sqrt((player.x - ax)*(player.x - ax) + (player.y - ay)*(player.y - ay));
+}
+
+function attackOrInteract() {
+  if (l1[2][5][2]===4 && pdist(2.5,5.5)<1.5) {
+    showMsg('You strike the bat! It falls dead.');
+    l1[2][5][2] = 9;
+    for (let z=1;z<=4;z++) l1[3][5][z] = 1;
+    dynMap[5][3] = 0;
+    return;
+  }
+  if (l1[4][3][1]===6 && pdist(4.5,3.5)<1.5) {
+    showMsg('You strike the wolf! It collapses.');
+    l1[4][3][1] = 8;
+    for (let z=1;z<=4;z++) l1[4][2][z] = 1;
+    dynMap[2][4] = 0;
+    return;
+  }
+  if (l1[6][4][1]===1 && pdist(6.5,4.5)<1.5) {
+    showMsg('You strike the goblin! It crumples to the floor.');
+    l1[6][4][1] = 8;
+    return;
+  }
+  interact();
+}
+
+// ── INVENTORY ─────────────────────────────────────────────────────────────────
+
+function addItem(id) {
+  for (let i=0;i<6;i++) { if (batoh[i]===0) { batoh[i]=id; return true; } }
+  showMsg("Your pack is full!"); return false;
+}
+function removeItem(id) {
+  for (let i=0;i<6;i++) { if (batoh[i]===id) { batoh[i]=0; return true; } }
+  return false;
+}
+function hasItem(id) { return batoh.includes(id); }
+
+// ── MESSAGES ──────────────────────────────────────────────────────────────────
+
+function showMsg(txt) {
+  message = txt;
+  messageTimer = 300;
+  const words = txt.split(' ');
+  let line = '', lines = [];
+  for (const w of words) {
+    const test = line ? line+' '+w : w;
+    if (test.length > 36 && line) { lines.push(line); line = w; } else line = test;
+  }
+  if (line) lines.push(line);
+  messageLines = lines.slice(0, 3);
+}
+
+// ── INTERACTION ───────────────────────────────────────────────────────────────
+
+function interact() {
+  const gx = player.x | 0;
+  const gy = player.y | 0;
+
+  if (gx===1 && gy===5) {
+    if (l1[1][5][1]===1) { showMsg('You search the skeleton — Gold Coin and a Scroll!'); addItem(2); addItem(3); l1[1][5][1]=9; }
+    else showMsg('The skeleton has been looted.');
+    return;
+  }
+  if (gx===1 && gy===6) {
+    const st = l1[1][6][3];
+    if (st===2) { showMsg('You grab a torch from the firepit.'); addItem(7); l1[1][6][3]=9; }
+    else if (st===9) showMsg('The firepit is cold and empty.');
+    else showMsg('A firepit crackles in the corner.');
+    return;
+  }
+  if (gx===2 && gy===5) {
+    const st = l1[2][5][2];
+    if (st===4) showMsg('The bat screeches! Press F/Space to attack or use a spell.');
+    else if (st===9) { if (!hasItem(4)) { addItem(4); showMsg('You pick up the dead bat.'); } else showMsg('Dead bat lies here.'); }
+    return;
+  }
+  if (gx===4 && gy===5) {
+    const st = l1[4][5][2];
+    if (st===1) {
+      showMsg("A magpie clutches a key. It wants something shiny...");
+      if (hasItem(2)) { showMsg('You offer the Gold Coin. The magpie drops the key!'); removeItem(2); l1[4][5][2]=4; }
+    } else if (st===4) { showMsg('You pick up the Old Key.'); addItem(5); l1[4][5][2]=9; }
+    else showMsg('The magpie watches you.');
+    return;
+  }
+  if (gx===4 && gy===3) {
+    if (l1[4][3][1]===6) showMsg('A wolf growls at you. Use Magic Cross or press F to attack!');
+    else showMsg('The wolf is gone.');
+    return;
+  }
+  if (gx===5 && gy===7) {
+    const st = l1[5][7][3];
+    if (st===1) {
+      showMsg("A druid rasps: 'Bring me a dead bat.'");
+      if (hasItem(4)) { showMsg('You offer the Dead Bat. The druid gives you a Magic Cross!'); removeItem(4); addItem(6); l1[5][7][3]=9; }
+    } else showMsg('The druid meditates in silence.');
+    return;
+  }
+  if (gx===6 && gy===6) {
+    if (l1[6][6][2]===1) { showMsg('You drink from the magical well. (+1 mana)'); mana=Math.min(5,mana+1); l1[6][6][2]=2; }
+    else showMsg('The well is dry.');
+    return;
+  }
+  if (gx===6 && gy===4) {
+    const st = l1[6][4][1];
+    if (st===1) showMsg('A goblin blocks your path! Attack or use Move spell.');
+    else if (st===8) { dia=1; l1[6][4][1]=9; showMsg('You take the sparkling diamond!'); }
+    else showMsg('The goblin is gone.');
+    return;
+  }
+  if (gx===4 && gy===1) {
+    const st = l1[4][1][1];
+    if (st===1) {
+      if (hasItem(5)) { showMsg('You use the Old Key. The lock clicks!'); removeItem(5); l1[4][1][1]=2; }
+      else showMsg('A locked door. You need a key.');
+    } else if (st===2) {
+      if (hasItem(7)) { showMsg('Your torch lights the way. The door opens!'); removeItem(7); l1[4][1][1]=3; }
+      else showMsg('The door is unlocked but pitch dark. You need a torch.');
+    } else if (st===3) {
+      if (dia===1) { showMsg('You step through... YOU WIN!'); gameState='win'; }
+      else showMsg("The door is open but you're missing something precious...");
+    }
+    return;
+  }
+  showMsg('Nothing notable here.');
+}
+
+function useItem(slot) {
+  const item = batoh[slot];
+  if (item===0) return;
+  const gx = player.x | 0;
+  const gy = player.y | 0;
+  if (item===1) {
+    if (hp>=5) { showMsg('Already at full health.'); return; }
+    hp=Math.min(5,hp+1); batoh[slot]=0; showMsg('You eat the apple. (+1 HP)'); return;
+  }
+  if (item===3) { showMsg("Scroll: 'Beware the wolf and goblin. Fire defeats darkness. A key unlocks fate.'"); return; }
+  if (item===6) {
+    if (gx===4&&gy===3&&l1[4][3][1]===6) {
+      showMsg('You brandish the Magic Cross! The wolf howls and flees!');
+      l1[4][3][1]=8; for (let z=1;z<=4;z++) l1[4][2][z]=1;
+      batoh[slot]=0; selectedSlot=-1; dynMap[2][4]=0; return;
+    }
+    showMsg('The Magic Cross glows faintly but nothing happens here.'); return;
+  }
+  if (item===2) {
+    if (gx===4&&gy===5&&l1[4][5][2]===1) {
+      showMsg('You offer the Gold Coin. The magpie drops the key!');
+      batoh[slot]=0; l1[4][5][2]=4; selectedSlot=-1; return;
+    }
+    showMsg('The coin serves no purpose here.'); return;
+  }
+  if (item===4) {
+    if (gx===5&&gy===7&&l1[5][7][3]===1) {
+      showMsg('You offer the Dead Bat. The druid gives you a Magic Cross!');
+      batoh[slot]=0; addItem(6); l1[5][7][3]=9; selectedSlot=-1; return;
+    }
+    showMsg('The dead bat is not useful here.'); return;
+  }
+  if (item===5) {
+    if (gx===4&&gy===1&&l1[4][1][1]===1) {
+      showMsg('You use the Old Key. The lock clicks!');
+      batoh[slot]=0; l1[4][1][1]=2; selectedSlot=-1; return;
+    }
+    showMsg('The key fits nothing here.'); return;
+  }
+  if (item===7) {
+    if (gx===4&&gy===1&&l1[4][1][1]===2) {
+      showMsg('Your torch lights the way. The door opens!');
+      batoh[slot]=0; l1[4][1][1]=3; selectedSlot=-1; return;
+    }
+    showMsg('The torch lights your path.'); return;
+  }
+  showMsg("You can't use that here.");
+}
+
+// ── SPELLS ────────────────────────────────────────────────────────────────────
+
+function castSpell(sp) {
+  const cost = SPELL_COST[sp];
+  if (mana < cost) { showMsg(`Not enough mana! Need ${cost}.`); return; }
+  const gx = player.x | 0;
+  const gy = player.y | 0;
+  if (sp===1) {
+    if (gx===2&&gy===5&&l1[2][5][2]===4) {
+      mana-=cost; showMsg('Fire! The bat bursts into flames and falls dead.');
+      l1[2][5][2]=9; for (let z=1;z<=4;z++) l1[3][5][z]=1; dynMap[5][3]=0; return;
+    }
+    showMsg('Fire spell fizzles — nothing to burn here.'); return;
+  }
+  if (sp===2) { mana-=cost; showMsg('Freeze! The air turns cold... but nothing is frozen.'); return; }
+  if (sp===3) { mana-=cost; showMsg('Flash! A blinding light fills the dungeon.'); return; }
+  if (sp===4) {
+    if (gx===4&&gy===3&&l1[4][3][1]===6) {
+      mana-=cost; showMsg('Death spell! The wolf collapses!');
+      l1[4][3][1]=8; for (let z=1;z<=4;z++) l1[4][2][z]=1; dynMap[2][4]=0; return;
+    }
+    if (gx===2&&gy===5&&l1[2][5][2]===4) {
+      mana-=cost; showMsg('Death spell! The bat drops dead.');
+      l1[2][5][2]=9; for (let z=1;z<=4;z++) l1[3][5][z]=1; dynMap[5][3]=0; return;
+    }
+    mana-=cost; showMsg('Death spell! ...nothing dies here.'); return;
+  }
+  if (sp===5) {
+    if (gx===6&&gy===4&&l1[6][4][1]===1) {
+      mana-=cost; showMsg('Move spell! The goblin flies across the room. A diamond appears!');
+      l1[6][4][1]=8; return;
+    }
+    if (gx===4&&gy===3&&l1[4][3][1]===6) {
+      mana-=cost; showMsg('Move spell! The wolf is flung aside!');
+      l1[4][3][1]=8; for (let z=1;z<=4;z++) l1[4][2][z]=1; dynMap[2][4]=0; return;
+    }
+    showMsg('Move spell — nothing to move here.'); return;
+  }
+}
+
+// ── RENDER BUFFER (only H3D rows) ─────────────────────────────────────────────
+
+const imgData = ctx.createImageData(W, H3D);
+const buf     = imgData.data;
+
+function pxBuf(x, y, r, g, b) {
+  if (x < 0 || x >= W || y < 0 || y >= H3D) return;
+  const i = (y * W + x) << 2;
+  buf[i] = r; buf[i+1] = g; buf[i+2] = b; buf[i+3] = 255;
+}
+
+// ── SPRITES ───────────────────────────────────────────────────────────────────
+
+const SPRITES = [
+  { id:'bat',      x:2.5, y:5.5, h:0.7, w:0.5 },
+  { id:'wolf',     x:4.5, y:3.5, h:0.9, w:0.7 },
+  { id:'goblin',   x:6.5, y:4.5, h:1.0, w:0.6 },
+  { id:'druid',    x:5.5, y:7.5, h:1.1, w:0.6 },
+  { id:'skeleton', x:1.5, y:5.5, h:0.9, w:0.5 },
+  { id:'magpie',   x:4.5, y:5.5, h:0.5, w:0.4 },
+  { id:'firepit',  x:1.5, y:6.4, h:0.5, w:0.5 },
+  { id:'well',     x:6.5, y:6.5, h:0.6, w:0.6 },
+];
+
+function spriteVisible(s) {
+  if (!l1) return false;
+  switch(s.id) {
+    case 'bat':      return l1[2][5][2]===4;
+    case 'wolf':     return l1[4][3][1]===6;
+    case 'goblin':   return l1[6][4][1]===1;
+    case 'druid':    return l1[5][7][3]===1;
+    case 'skeleton': return l1[1][5][1]===1;
+    case 'magpie':   { const st=l1[4][5][2]; return st===1||st===4; }
+    case 'firepit':  return l1[1][6][3]===2;
+    case 'well':     { const st=l1[6][6][2]; return st===1||st===2; }
+    default: return false;
+  }
+}
+
+// Returns [r,g,b] or null for transparent pixel at normalized (u,v)
+function spritePx(id, u, v) {
+  switch(id) {
+
+    case 'bat': {
+      const cu = u - 0.5;
+      const cv = v - 0.5 + Math.sin(tick * 0.12) * 0.06;
+      // Wing: wider in middle
+      const wingW = 0.48 - Math.abs(cv) * 0.7;
+      if (Math.abs(cu) > wingW || wingW < 0) return null;
+      // Body blob
+      if (Math.abs(cu) < 0.12 && cv > -0.18 && cv < 0.18) return [45, 22, 55];
+      // Wing membrane
+      const fade = 1 - Math.abs(cu) / wingW;
+      if (fade < 0.1) return null;
+      return [75, 28, 88];
+    }
+
+    case 'wolf': {
+      const cu = u - 0.5;
+      // Head (top 35%)
+      if (v < 0.35) {
+        const earL = cu > -0.30 && cu < -0.14 && v < 0.14;
+        const earR = cu > 0.14  && cu < 0.30  && v < 0.14;
+        const head = Math.abs(cu) < 0.24 && v >= 0.06;
+        if (!earL && !earR && !head) return null;
+        if (Math.abs(cu + 0.09) < 0.045 && v > 0.18 && v < 0.26) return [200,180,50];
+        if (Math.abs(cu - 0.09) < 0.045 && v > 0.18 && v < 0.26) return [200,180,50];
+        return [100, 62, 28];
+      }
+      // Body
+      if (v >= 0.35 && v < 0.9) {
+        const bw = 0.30;
+        if (Math.abs(cu) > bw) return null;
+        if (v > 0.72) {
+          if (!(cu > -0.28 && cu < -0.08) && !(cu > 0.08 && cu < 0.28)) return null;
+        }
+        return [108, 70, 32];
+      }
+      return null;
+    }
+
+    case 'goblin': {
+      const cu = u - 0.5;
+      if (v < 0.28 && Math.abs(cu) < 0.22) {
+        if (Math.abs(cu + 0.09) < 0.045 && v > 0.12 && v < 0.20) return [220,20,20];
+        if (Math.abs(cu - 0.09) < 0.045 && v > 0.12 && v < 0.20) return [220,20,20];
+        return [50, 120, 40];
+      }
+      if (v >= 0.28 && v < 0.65 && Math.abs(cu) < 0.18) return [42, 105, 36];
+      if (v >= 0.65 && v < 0.82 && Math.abs(cu) < 0.20) return [80, 55, 20];
+      if (v >= 0.82 && v < 0.98) {
+        if ((cu > -0.20 && cu < -0.04) || (cu > 0.04 && cu < 0.20)) return [42, 105, 36];
+      }
+      return null;
+    }
+
+    case 'druid': {
+      const cu = u - 0.5;
+      const robeW = 0.09 + v * 0.38;
+      if (Math.abs(cu) > robeW) return null;
+      if (v < 0.26) {
+        if (Math.abs(cu + 0.08) < 0.055 && v > 0.13 && v < 0.20) return [0, 220, 200];
+        if (Math.abs(cu - 0.08) < 0.055 && v > 0.13 && v < 0.20) return [0, 220, 200];
+        return [55, 65, 88];
+      }
+      const stripe = Math.floor(v * 18) % 3;
+      return stripe===0 ? [48,56,78] : [66,75,98];
+    }
+
+    case 'skeleton': {
+      const cu = u - 0.5;
+      if (v < 0.26 && Math.abs(cu) < 0.22) {
+        if (Math.abs(cu + 0.08) < 0.05 && v > 0.12 && v < 0.20) return [8,8,8];
+        if (Math.abs(cu - 0.08) < 0.05 && v > 0.12 && v < 0.20) return [8,8,8];
+        return [208, 202, 178];
+      }
+      if (Math.abs(cu) < 0.05 && v >= 0.26 && v < 0.9) return [178, 172, 148];
+      if (v >= 0.40 && v < 0.80) {
+        const fr = (v - 0.40) / 0.40;
+        if (Math.floor(fr * 8) % 2 === 0 && Math.abs(cu) < 0.26) return [188, 182, 158];
+      }
+      if (v >= 0.80 && v < 0.98) {
+        if ((cu > -0.22 && cu < -0.05) || (cu > 0.05 && cu < 0.22)) return [185,178,155];
+      }
+      return null;
+    }
+
+    case 'magpie': {
+      const cu = u - 0.5;
+      if (v > 0.84 && Math.abs(cu) < 0.46) return [75, 58, 28];
+      if (v >= 0.30 && v < 0.80) {
+        const bw = 0.22 - (v - 0.30) * 0.18;
+        if (Math.abs(cu) < bw) {
+          if (v < 0.48 && Math.abs(cu - 0.07) < 0.04) return [190,170,18];
+          return [205, 185, 28];
+        }
+        if (Math.abs(cu) < bw + 0.16 && v > 0.42 && v < 0.72) return [175,155,18];
+      }
+      if (v < 0.32 && Math.abs(cu) < 0.14) {
+        if (Math.abs(cu - 0.07) < 0.04 && v > 0.14 && v < 0.24) return [30,30,30];
+        return [210, 195, 38];
+      }
+      return null;
+    }
+
+    case 'firepit': {
+      const cu = u - 0.5;
+      const flicker = Math.sin(tick * 0.15 + cu * 8) * 0.14 + Math.sin(tick * 0.23) * 0.06;
+      const flameH = 0.55 + flicker;
+      if (v > flameH) return null;
+      const fw = (1 - v / flameH) * 0.38;
+      if (Math.abs(cu) > fw) return null;
+      const fv = v / Math.max(0.01, flameH);
+      const r = 255;
+      const g = Math.max(0, Math.min(255, (190 - fv * 130 + Math.sin(tick * 0.22 + v * 9) * 28) | 0));
+      const b = fv < 0.25 ? Math.max(0, (70 - fv * 280) | 0) : 0;
+      return [r, g, b];
+    }
+
+    case 'well': {
+      const cu = u - 0.5;
+      if (v < 0.26) {
+        if (Math.abs(cu) < 0.46 && Math.abs(cu) >= 0.28) {
+          const n = hash((u*32)|0, (v*32)|0) >> 3;
+          return [58+n, 55+n, 50+n];
+        }
+        if (Math.abs(cu) < 0.28) return [10,20,36];
+        return null;
+      }
+      if (v < 0.90) {
+        if ((cu > -0.47 && cu < -0.27) || (cu > 0.27 && cu < 0.47)) {
+          const n = hash((u*32)|0, (v*32)|0) >> 3;
+          return [55+n, 52+n, 46+n];
+        }
+        if (Math.abs(cu) < 0.27) return [8,18,30];
+        return null;
+      }
+      if (Math.abs(cu) < 0.47) {
+        const n = hash((u*32)|0, (v*32)|0) >> 3;
+        return [60+n, 57+n, 51+n];
+      }
+      return null;
+    }
+
+    default: return null;
+  }
+}
+
+// ── RAYCASTING ────────────────────────────────────────────────────────────────
+
+const zBuffer = new Float32Array(W);
+
+function renderGame3D() {
+  const torch = 0.88 + Math.sin(torchPhase * 1.1) * 0.05
+                     + Math.sin(torchPhase * 3.9) * 0.02;
+
+  // Floor / ceiling gradient
+  for (let y = 0; y < H3D; y++) {
+    for (let x = 0; x < W; x++) {
+      if (y < H3D >> 1) {
+        const t = y / (H3D >> 1);
+        pxBuf(x, y,
+          ((14 + t *  9) * torch) | 0,
+          ((14 + t *  9) * torch) | 0,
+          ((20 + t * 13) * torch) | 0);
+      } else {
+        const t = (y - (H3D >> 1)) / (H3D >> 1);
+        pxBuf(x, y,
+          ((10 + t * 18) * torch) | 0,
+          ((8  + t * 14) * torch) | 0,
+          ((6  + t * 10) * torch) | 0);
+      }
+    }
+  }
+
+  const tex = textures[1];
+
+  // Wall raycasting (DDA)
+  for (let sx = 0; sx < W; sx++) {
+    const camX = 2 * sx / W - 1;
+    const rdx  = player.dirX + player.planeX * camX;
+    const rdy  = player.dirY + player.planeY * camX;
+    let mx = player.x | 0, my = player.y | 0;
+    const ddx = rdx === 0 ? 1e30 : Math.abs(1 / rdx);
+    const ddy = rdy === 0 ? 1e30 : Math.abs(1 / rdy);
+    let sdx, sdy, stepx, stepy;
+    if (rdx < 0) { stepx = -1; sdx = (player.x - mx) * ddx; }
+    else          { stepx =  1; sdx = (mx + 1 - player.x) * ddx; }
+    if (rdy < 0) { stepy = -1; sdy = (player.y - my) * ddy; }
+    else          { stepy =  1; sdy = (my + 1 - player.y) * ddy; }
+    let side = 0, hit = 0;
+    for (let n = 0; n < 64 && !hit; n++) {
+      if (sdx < sdy) { sdx += ddx; mx += stepx; side = 0; }
+      else            { sdy += ddy; my += stepy; side = 1; }
+      if (mx < 0 || mx >= MSIZE || my < 0 || my >= MSIZE) hit = 1;
+      else if (dynMap[my][mx] === 1) hit = 1;
+    }
+    const dist = Math.max(0.01, side === 0 ? sdx - ddx : sdy - ddy);
+    zBuffer[sx] = dist;
+    const lh = (H3D / dist) | 0;
+    const y0 = Math.max(0,       ((H3D - lh) >> 1));
+    const y1 = Math.min(H3D - 1, ((H3D + lh) >> 1));
+    let wallX = side === 0 ? player.y + dist * rdy : player.x + dist * rdx;
+    wallX -= Math.floor(wallX);
+    let tx = (wallX * TEX) | 0;
+    if (side === 0 && rdx > 0) tx = TEX - tx - 1;
+    if (side === 1 && rdy < 0) tx = TEX - tx - 1;
+    const step = TEX / lh;
+    let   tp   = ((y0 - (H3D >> 1) + (lh >> 1)) * step);
+    const fog    = Math.max(0, 1 - dist / FOG) * torch;
+    const side_d = side === 1 ? 0.63 : 1.0;
+    for (let sy = y0; sy <= y1; sy++) {
+      const ty = ((tp | 0) & (TEX - 1));
+      tp += step;
+      const ti = (ty * TEX + tx) << 2;
+      const f  = fog * side_d;
+      pxBuf(sx, sy,
+        (tex[ti]   * f) | 0,
+        (tex[ti+1] * f) | 0,
+        (tex[ti+2] * f) | 0);
+    }
+  }
+
+  // Sprites: sort back-to-front, render with Z-buffer
+  const visible = SPRITES.filter(s => spriteVisible(s));
+  visible.sort((a, b) => {
+    const da = (a.x-player.x)**2 + (a.y-player.y)**2;
+    const db = (b.x-player.x)**2 + (b.y-player.y)**2;
+    return db - da;
+  });
+
+  const invDet = 1.0 / (player.planeX * player.dirY - player.dirX * player.planeY);
+
+  for (const sp of visible) {
+    const sx2 = sp.x - player.x;
+    const sy2 = sp.y - player.y;
+    const transformX = invDet * ( player.dirY * sx2 - player.dirX * sy2);
+    const transformY = invDet * (-player.planeY * sx2 + player.planeX * sy2);
+    if (transformY <= 0.05) continue;
+
+    const spriteScreenX = ((W / 2) * (1 + transformX / transformY)) | 0;
+    const spriteH = Math.abs((H3D / transformY) * sp.h) | 0;
+    const spriteW = Math.abs((H3D / transformY) * sp.w) | 0;
+    if (spriteH < 2 || spriteW < 2) continue;
+
+    const drawStartY = Math.max(0,       ((H3D - spriteH) >> 1));
+    const drawEndY   = Math.min(H3D - 1, ((H3D + spriteH) >> 1));
+    const drawStartX = Math.max(0,   spriteScreenX - (spriteW >> 1));
+    const drawEndX   = Math.min(W-1, spriteScreenX + (spriteW >> 1));
+    const spRangeY   = drawEndY - drawStartY + 1;
+    const fog = Math.max(0, 1 - transformY / FOG) * (0.88 + Math.sin(torchPhase*1.1)*0.05);
+
+    for (let stripe = drawStartX; stripe <= drawEndX; stripe++) {
+      if (transformY >= zBuffer[stripe]) continue;
+      const u = (stripe - (spriteScreenX - (spriteW >> 1))) / spriteW;
+      for (let sy = drawStartY; sy <= drawEndY; sy++) {
+        const v = (sy - drawStartY) / spRangeY;
+        const col = spritePx(sp.id, u, v);
+        if (!col) continue;
+        pxBuf(stripe, sy,
+          (col[0] * fog) | 0,
+          (col[1] * fog) | 0,
+          (col[2] * fog) | 0);
+      }
+    }
+  }
+
+  // Single putImageData call
+  ctx.putImageData(imgData, 0, 0);
+
+  // 2D canvas overlays
+  drawCrosshair();
+  drawCompass();
+  if (showMap) drawMinimap();
+}
+
+// ── 2D OVERLAYS ───────────────────────────────────────────────────────────────
+
+function drawCrosshair() {
+  const cx = W >> 1, cy = H3D >> 1;
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.lineWidth   = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx-8, cy); ctx.lineTo(cx+8, cy);
+  ctx.moveTo(cx, cy-8); ctx.lineTo(cx, cy+8);
+  ctx.stroke();
+}
+
+function drawCompass() {
+  const ang  = Math.atan2(player.dirX, -player.dirY);
+  const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+  const idx  = (Math.round(((ang + Math.PI) / (Math.PI * 2)) * 8) % 8 + 8) % 8;
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(W - 56, 8, 48, 26);
+  ctx.fillStyle = '#c8a030';
+  ctx.font      = '15px "Courier New", monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText(dirs[idx], W - 12, 28);
+}
+
+function drawMinimap() {
+  const S2 = 14, OX = 10, OY = 10;
+  const MW = MSIZE * S2, MH = MSIZE * S2;
+  ctx.fillStyle = 'rgba(0,0,0,0.75)';
+  ctx.fillRect(OX - 2, OY - 2, MW + 4, MH + 4);
+  for (let my = 0; my < MSIZE; my++) {
+    for (let mx = 0; mx < MSIZE; mx++) {
+      ctx.fillStyle = dynMap[my][mx] === 1 ? '#3a2810' : '#1a1208';
+      ctx.fillRect(OX + mx*S2, OY + my*S2, S2-1, S2-1);
+    }
+  }
+  // Enemy dots
+  for (const sp of SPRITES) {
+    if (!spriteVisible(sp)) continue;
+    ctx.fillStyle = '#ff3030';
+    ctx.beginPath();
+    ctx.arc(OX + sp.x*S2, OY + sp.y*S2, 3, 0, Math.PI*2);
+    ctx.fill();
+  }
+  // Player dot + direction
+  const ppx = OX + player.x*S2, ppy = OY + player.y*S2;
+  ctx.fillStyle = '#ffd040';
+  ctx.beginPath(); ctx.arc(ppx, ppy, 3, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#ffd040'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(ppx, ppy);
+  ctx.lineTo(ppx + player.dirX*12, ppy + player.dirY*12);
+  ctx.stroke();
+}
+
+// ── HUD ───────────────────────────────────────────────────────────────────────
+
+function renderHUD() {
+  const hy = H3D;
+  ctx.fillStyle = '#0a0806';
+  ctx.fillRect(0, hy, W, HUD_H);
+  ctx.strokeStyle = '#3a2810';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, hy); ctx.lineTo(W, hy); ctx.stroke();
+
+  // HP pips
+  ctx.fillStyle = '#888';
+  ctx.font = '11px "Courier New", monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('HP', 6, hy+14);
+  for (let i=0;i<5;i++) {
+    ctx.fillStyle = i < hp ? '#cc2020' : '#2a1010';
+    ctx.fillRect(30+i*15, hy+4, 11, 11);
+    ctx.strokeStyle = '#4a1010'; ctx.lineWidth = 1;
+    ctx.strokeRect(30+i*15, hy+4, 11, 11);
+  }
+
+  // MP pips
+  ctx.fillStyle = '#888';
+  ctx.fillText('MP', 6, hy+30);
+  for (let i=0;i<5;i++) {
+    ctx.fillStyle = i < mana ? '#2050cc' : '#10102a';
+    ctx.fillRect(30+i*15, hy+20, 11, 11);
+    ctx.strokeStyle = '#10103a'; ctx.lineWidth = 1;
+    ctx.strokeRect(30+i*15, hy+20, 11, 11);
+  }
+
+  // Spell buttons (x=145..375, 5 buttons each 46px, y=hy+4..hy+30)
+  for (let i=0;i<5;i++) {
+    const bx = 145 + i*46;
+    const by = hy+4;
+    const canCast = mana >= SPELL_COST[i+1];
+    ctx.fillStyle = canCast ? '#1a1206' : '#0d0b07';
+    ctx.fillRect(bx, by, 42, 22);
+    ctx.strokeStyle = canCast ? '#6a4a10' : '#2a2010';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(bx, by, 42, 22);
+    ctx.fillStyle = canCast ? '#c8a030' : '#504030';
+    ctx.font = '9px "Courier New", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`[${i+1}]${SPELL_NAMES[i]}`, bx+21, by+10);
+    ctx.fillText(`(${SPELL_COST[i+1]}mp)`, bx+21, by+20);
+  }
+
+  // Inventory slots (x=10..310, y=hy+36..hy+76, 6 slots 50px wide, 40px tall)
+  for (let i=0;i<6;i++) {
+    const bx = 10+i*50;
+    const by = hy+36;
+    ctx.fillStyle = '#120e08';
+    ctx.fillRect(bx, by, 46, 38);
+    ctx.strokeStyle = i===selectedSlot ? '#ffd040' : '#2a1e0c';
+    ctx.lineWidth = i===selectedSlot ? 2 : 1;
+    ctx.strokeRect(bx, by, 46, 38);
+    if (batoh[i]>0) {
+      ctx.fillStyle = i===selectedSlot ? '#ffd040' : '#a07820';
+      ctx.font = '8px "Courier New", monospace';
+      ctx.textAlign = 'center';
+      const name = ITEM_NAMES[batoh[i]];
+      const words2 = name.split(' ');
+      if (words2.length>1 && name.length>8) {
+        ctx.fillText(words2[0], bx+23, by+16);
+        ctx.fillText(words2.slice(1).join(' '), bx+23, by+27);
+      } else {
+        ctx.fillText(name, bx+23, by+22);
+      }
+    }
+  }
+
+  // Message box (x=330..634, y=hy+4..hy+76)
+  const mx2 = 330, mw = W-mx2-6;
+  ctx.fillStyle = '#080604';
+  ctx.fillRect(mx2, hy+4, mw, HUD_H-8);
+  ctx.strokeStyle = '#3a2a10';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(mx2, hy+4, mw, HUD_H-8);
+  if (messageTimer>0 && messageLines.length>0) {
+    const alpha = Math.min(1, messageTimer/60);
+    ctx.fillStyle = `rgba(220,190,100,${alpha})`;
+    ctx.font = '10px "Courier New", monospace';
+    ctx.textAlign = 'left';
+    messageLines.forEach((line, idx) => {
+      ctx.fillText(line, mx2+5, hy+17+idx*15);
+    });
+  }
+}
+
+// ── TITLE / OVERLAYS ──────────────────────────────────────────────────────────
+
+function renderTitle() {
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+  const t  = performance.now() / 1000;
+  const fl = 0.82 + Math.sin(t*6.3)*0.06 + Math.sin(t*14.7)*0.02;
+  ctx.strokeStyle = `rgba(100,70,30,${fl*0.6})`;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(20, 20, W-40, H-40);
+  ctx.strokeRect(26, 26, W-52, H-52);
+  ctx.shadowColor = `rgba(255,150,30,${fl*0.9})`;
+  ctx.shadowBlur  = 28;
+  ctx.fillStyle   = `rgba(210,160,55,${fl})`;
+  ctx.font        = 'bold 78px "Courier New", monospace';
+  ctx.textAlign   = 'center';
+  ctx.fillText('STONE',  W/2, 160);
+  ctx.fillText('TOWERS', W/2, 248);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = `rgba(160,130,70,${fl*0.85})`;
+  ctx.font = '16px "Courier New", monospace';
+  ctx.fillText('Hybrid Edition', W/2, 292);
+  const blink = Math.sin(t*3) > 0;
+  ctx.fillStyle = blink ? `rgba(200,170,80,${fl})` : `rgba(100,80,30,${fl})`;
+  ctx.font = '13px "Courier New", monospace';
+  ctx.fillText('— Press ENTER or click to begin —', W/2, 352);
+  ctx.fillStyle = '#444';
+  ctx.font = '11px "Courier New", monospace';
+  ctx.fillText('WASD/arrows=move  Q/E=strafe  F/Space=attack  1-5=spells  M=map', W/2, H-24);
+}
+
+function renderGameOver() {
+  ctx.fillStyle = 'rgba(0,0,0,0.72)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#cc2020';
+  ctx.shadowColor = '#ff0000';
+  ctx.shadowBlur = 20;
+  ctx.font = 'bold 72px "Courier New", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('YOU DIED', W/2, 220);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#888';
+  ctx.font = '14px "Courier New", monospace';
+  ctx.fillText('Press ENTER to try again', W/2, 280);
+}
+
+function renderWin() {
+  ctx.fillStyle = 'rgba(0,0,0,0.72)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#ffd040';
+  ctx.shadowColor = '#ffd040';
+  ctx.shadowBlur = 24;
+  ctx.font = 'bold 68px "Courier New", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('VICTORY!', W/2, 200);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#c0a030';
+  ctx.font = '18px "Courier New", monospace';
+  ctx.fillText('You escaped the Stone Towers!', W/2, 260);
+  ctx.fillStyle = '#666';
+  ctx.font = '12px "Courier New", monospace';
+  ctx.fillText('original game by  raist · ernie · dusty', W/2, 300);
+  const blink = Math.floor(tick/30)%2===0;
+  if (blink) {
+    ctx.fillStyle = '#aaa';
+    ctx.font = '13px "Courier New", monospace';
+    ctx.fillText('Press ENTER to play again', W/2, 340);
+  }
+}
+
+// ── MAIN LOOP ─────────────────────────────────────────────────────────────────
+
+let lastTs = 0;
+
+function loop(ts) {
+  const dt = Math.min((ts - lastTs) / 1000, 0.05);
+  lastTs = ts;
+  tick++;
+  if (messageTimer > 0) messageTimer--;
+
+  if (gameState === 'title') {
+    renderTitle();
+  } else if (gameState === 'game') {
+    update(dt);
+    renderGame3D();
+    renderHUD();
+  } else if (gameState === 'gameover') {
+    renderGame3D();
+    renderHUD();
+    renderGameOver();
+  } else if (gameState === 'win') {
+    renderGame3D();
+    renderHUD();
+    renderWin();
+  }
+
+  requestAnimationFrame(loop);
+}
+
+requestAnimationFrame(ts => { lastTs = ts; requestAnimationFrame(loop); });
+
+  </script>
+</body>
+</html>

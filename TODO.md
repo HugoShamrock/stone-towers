@@ -88,9 +88,9 @@ Moderní prohlížeče to nativně neumí přehrát.
 - CEL-formát sprity (64 KB každý)
 - GIF artwork: portréty postav, herní obrazovky, 3D prototypy
 
-- [ ] **Prozkoumat stonet2 Pascal zdroje** — pochopit herní logiku v porovnání s stonet1
-- [ ] **Webový port stonet2** — samostatná `stonet2.html` hra s novým enginem
-- [ ] **Přidat kartu stonet2 na rozcestník** — jakmile bude port hotový
+- [x] **Prozkoumat stonet2 Pascal zdroje** — pochopit herní logiku v porovnání s stonet1
+- [x] **Webový port stonet2** — `stonet2.html`: CEL loader + CH.COL paleta, 4×320×200 tile compositor, CHB/CHF/CHL/CHR animace, PAN UI, mini-mapa, pohyb po gridu
+- [x] **Přidat kartu stonet2 na rozcestník** — karta #7
 
 ---
 
