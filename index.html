@@ -9,16 +9,63 @@
     /* ── GAME CARDS ── */
     .games {
       width: 100%;
-      max-width: 860px;
+      max-width: 1060px;
       padding: 16px 24px 48px;
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 12px;
     }
 
-    @media (max-width: 700px) {
-      .games { grid-template-columns: repeat(2, 1fr); max-width: 480px; }
+    @media (max-width: 860px) {
+      .games { grid-template-columns: repeat(3, 1fr); max-width: 680px; }
     }
+    @media (max-width: 560px) {
+      .games { grid-template-columns: repeat(2, 1fr); max-width: 420px; }
+    }
+
+    /* ── HYBRID SECTION ── */
+    .hybrid-section {
+      width: 100%;
+      max-width: 1060px;
+      padding: 0 24px 48px;
+    }
+
+    .hybrid-desc {
+      font-size: 11px;
+      color: #7a6040;
+      line-height: 1.8;
+      max-width: 680px;
+      margin-bottom: 16px;
+    }
+
+    .hybrid-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .hybrid-link {
+      display: flex;
+      flex-direction: column;
+      background: #131008;
+      border: 1px solid #2a1e0c;
+      padding: 14px 18px 12px;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.18s, background 0.18s;
+      min-width: 160px;
+      flex: 1;
+    }
+
+    .hybrid-link:hover { border-color: #7a5020; background: #1a1408; }
+
+    .hybrid-link-num { font-size: 10px; color: #5a3c18; letter-spacing: 1px; margin-bottom: 4px; }
+    .hybrid-link-title { font-size: 14px; font-weight: bold; color: #b08030; letter-spacing: 1px; margin-bottom: 4px; }
+    .hybrid-link:hover .hybrid-link-title { color: #d4a020; }
+    .hybrid-link-sub { font-size: 9px; color: #604828; letter-spacing: 1px; margin-bottom: 10px; }
+    .hybrid-link-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+    .hybrid-link-play { font-size: 9px; color: #7a5828; letter-spacing: 1px; margin-top: auto; }
+    .hybrid-link:hover .hybrid-link-play { color: #c08030; }
 
     .card {
       display: flex;
@@ -67,7 +114,7 @@
     /* ── ARCHIVE LINKS ── */
     .archive {
       width: 100%;
-      max-width: 860px;
+      max-width: 1060px;
       padding: 16px 24px 48px;
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
@@ -175,56 +222,8 @@
       </div>
     </a>
 
-    <a class="card" href="hybrid1.html">
-      <div class="card-header"><div class="card-title"><span class="card-num">5.</span> Hybrid 1<br><small style="font-size:12px;font-weight:normal;color:#907050">3D + Original Art</small></div></div>
-      <div class="badges">
-        <span class="badge primary">first-person 3D</span>
-        <span class="badge special">1995 artwork</span>
-        <span class="badge">full RPG</span>
-      </div>
-      <div class="card-desc">
-        3D raycasting engine from Game&nbsp;1 with original 1995 GIF artwork and full RPG mechanics from Game&nbsp;3.
-      </div>
-      <div class="card-footer">
-        <div class="card-controls"><span>WASD</span> move &nbsp; <span>1–5</span> spells &nbsp; <span>F</span> use</div>
-        <button class="play-btn">PLAY →</button>
-      </div>
-    </a>
-
-    <a class="card" href="hybrid2.html">
-      <div class="card-header"><div class="card-title"><span class="card-num">6.</span> Hybrid 2<br><small style="font-size:12px;font-weight:normal;color:#907050">3D + item icons + hints</small></div></div>
-      <div class="badges">
-        <span class="badge primary">first-person 3D</span>
-        <span class="badge special">1995 artwork</span>
-        <span class="badge">full RPG</span>
-      </div>
-      <div class="card-desc">
-        Hybrid 1 + item icons from original GIFs in inventory, context-sensitive hints at crosshair.
-      </div>
-      <div class="card-footer">
-        <div class="card-controls"><span>WASD</span> move &nbsp; <span>1–5</span> spells &nbsp; <span>F</span> use</div>
-        <button class="play-btn">PLAY →</button>
-      </div>
-    </a>
-
-    <a class="card" href="hybrid3.html">
-      <div class="card-header"><div class="card-title"><span class="card-num">7.</span> Hybrid 3<br><small style="font-size:12px;font-weight:normal;color:#907050">fixes + gate</small></div></div>
-      <div class="badges">
-        <span class="badge primary">first-person 3D</span>
-        <span class="badge special">1995 artwork</span>
-        <span class="badge">full RPG</span>
-      </div>
-      <div class="card-desc">
-        Hybrid 2 + fixed fire sprite, dead bat/goblin lying on floor, diamond pickup, iron gate at final room.
-      </div>
-      <div class="card-footer">
-        <div class="card-controls"><span>WASD</span> move &nbsp; <span>1–5</span> spells &nbsp; <span>F</span> use</div>
-        <button class="play-btn">PLAY →</button>
-      </div>
-    </a>
-
     <a class="card" href="stonet2.html">
-      <div class="card-header"><div class="card-title"><span class="card-num">8.</span> Stone Towers II<br><small style="font-size:12px;font-weight:normal;color:#907050">1998–1999 engine</small></div></div>
+      <div class="card-header"><div class="card-title"><span class="card-num">5.</span> Stone Towers II<br><small style="font-size:12px;font-weight:normal;color:#907050">1998–1999 engine</small></div></div>
       <div class="badges">
         <span class="badge primary">third-person RPG</span>
         <span class="badge special">640×480</span>
@@ -240,6 +239,68 @@
       </div>
     </a>
 
+  </div>
+
+  <div class="divider"></div>
+
+  <p class="section-title">— hybrid editions —</p>
+
+  <div class="hybrid-section">
+    <p class="hybrid-desc">
+      Hybrid editions combine the first-person 3D raycasting engine with the original 1995 VGA artwork and
+      full RPG mechanics. Each version builds on the previous — progressive refinements, new sprites,
+      and gameplay fixes. <strong style="color:#8a6428">Hybrid 4</strong> is the most complete version.
+    </p>
+    <div class="hybrid-links">
+
+      <a class="hybrid-link" href="hybrid1.html">
+        <div class="hybrid-link-num">H1</div>
+        <div class="hybrid-link-title">Hybrid 1</div>
+        <div class="hybrid-link-sub">3D + Original Art</div>
+        <div class="hybrid-link-badges">
+          <span class="badge primary">first-person 3D</span>
+          <span class="badge special">1995 artwork</span>
+          <span class="badge">full RPG</span>
+        </div>
+        <div class="hybrid-link-play">PLAY →</div>
+      </a>
+
+      <a class="hybrid-link" href="hybrid2.html">
+        <div class="hybrid-link-num">H2</div>
+        <div class="hybrid-link-title">Hybrid 2</div>
+        <div class="hybrid-link-sub">+ item icons + hints</div>
+        <div class="hybrid-link-badges">
+          <span class="badge">item icons</span>
+          <span class="badge">context hints</span>
+        </div>
+        <div class="hybrid-link-play">PLAY →</div>
+      </a>
+
+      <a class="hybrid-link" href="hybrid3.html">
+        <div class="hybrid-link-num">H3</div>
+        <div class="hybrid-link-title">Hybrid 3</div>
+        <div class="hybrid-link-sub">+ fixes + gate</div>
+        <div class="hybrid-link-badges">
+          <span class="badge">fire fix</span>
+          <span class="badge">dead sprites</span>
+          <span class="badge">iron gate</span>
+        </div>
+        <div class="hybrid-link-play">PLAY →</div>
+      </a>
+
+      <a class="hybrid-link" href="hybrid4.html">
+        <div class="hybrid-link-num">H4</div>
+        <div class="hybrid-link-title">Hybrid 4</div>
+        <div class="hybrid-link-sub">+ pickup + skeleton</div>
+        <div class="hybrid-link-badges">
+          <span class="badge special">recommended</span>
+          <span class="badge">bat pickup</span>
+          <span class="badge">lying skeleton</span>
+        </div>
+        <div class="hybrid-link-play">PLAY →</div>
+      </a>
+
+    </div>
   </div>
 
   <div class="divider"></div>
