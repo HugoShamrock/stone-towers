@@ -208,73 +208,61 @@ textures[1] = makeStoneTex(90, 88, 82);
 textures[2] = makeStoneTex(80, 58, 32);
 textures[3] = makeStoneTex(100, 28, 18);
 
-// ── ORIGINAL TEXTURES (from TEXTURES/ directory) ──────────────────────────────
+// ── FOREST TEXTURE (Level 1) ──────────────────────────────────────────────────
 
-// Procedural bark fallback — used if GIF fails to load
-function makeForestBarkTex() {
+// Procedural fallback: dark warm bark pattern
+function makeForestTex() {
   const d = new Uint8ClampedArray(TEX * TEX * 4);
   for (let ty = 0; ty < TEX; ty++) {
     for (let tx = 0; tx < TEX; tx++) {
-      const grain = (Math.sin(tx * 1.15 + Math.sin(ty * 0.28 + tx * 0.10) * 3.5) * 0.5 + 0.5) * 30;
-      const rough  = hash(tx, ty) >> 3;
-      const coarse = hash((tx >> 2) << 2, (ty >> 3) << 3) >> 2;
-      const crack  = (ty % 11 < 2) ? -20 : 0;
-      const moss   = (hash(tx * 3 + 7, ty * 3 + 11) > 224 && ty > 30) ? 14 : 0;
+      const noise = Math.sin(tx * 0.7 + ty * 0.3) * 12 + Math.cos(tx * 1.3 - ty * 0.9) * 8;
+      const crack = ((tx * 3 + ty) % 17 < 2) ? -20 : 0;
+      const r = Math.min(255, Math.max(0, 90 + noise + crack));
+      const g = Math.min(255, Math.max(0, 55 + noise * 0.6 + crack));
+      const b = Math.min(255, Math.max(0, 20 + noise * 0.3 + crack));
       const i = (ty * TEX + tx) * 4;
-      d[i]   = Math.max(0, Math.min(255, 76 + grain + (rough >> 1) + (coarse >> 2) + crack));
-      d[i+1] = Math.max(0, Math.min(255, 46 + grain * 0.65 + (rough >> 2) + (coarse >> 3) + crack + moss));
-      d[i+2] = Math.max(0, Math.min(255, 18 + grain * 0.28 + crack));
-      d[i+3] = 255;
+      d[i] = r; d[i+1] = g; d[i+2] = b; d[i+3] = 255;
     }
   }
   return d;
 }
 
-// Build a 64×64 wall texture by scaling down a raw GIF ImageData
-// Optional crop: { x, y, w, h } in source pixels
+// Scale a region of a GIF ImageData to a 64×64 texture
+// crop = { x, y, w, h } in source pixels (optional)
 function buildTexFromGif(idata, gw, gh, crop) {
-  const cx = crop ? crop.x : 0;
-  const cy = crop ? crop.y : 0;
-  const cw = crop ? crop.w : gw;
-  const ch = crop ? crop.h : gh;
+  const cx = crop ? crop.x : 0,  cy = crop ? crop.y : 0;
+  const cw = crop ? crop.w : gw, ch = crop ? crop.h : gh;
   const d = new Uint8ClampedArray(TEX * TEX * 4);
   for (let ty = 0; ty < TEX; ty++) {
     for (let tx = 0; tx < TEX; tx++) {
-      const gx = (cx + (tx / TEX) * cw) | 0;
-      const gy = (cy + (ty / TEX) * ch) | 0;
+      const gx = Math.min(gw - 1, (cx + (tx / TEX) * cw) | 0);
+      const gy = Math.min(gh - 1, (cy + (ty / TEX) * ch) | 0);
       const si = (gy * gw + gx) * 4;
       const di = (ty * TEX + tx) * 4;
-      d[di] = idata.data[si]; d[di+1] = idata.data[si+1]; d[di+2] = idata.data[si+2]; d[di+3] = 255;
+      d[di] = idata.data[si]; d[di+1] = idata.data[si+1];
+      d[di+2] = idata.data[si+2]; d[di+3] = 255;
     }
   }
   return d;
 }
 
-// Pre-fill with procedural fallbacks immediately (no wait)
-textures['forest'] = makeForestBarkTex();
-textures['stone_orig'] = textures[1];
+// Start with procedural fallback, upgrade async when GIF loads
+textures['forest'] = makeForestTex();
 
-// Then upgrade asynchronously with original 1995 GIF textures
-(function loadOriginalTextures() {
-  const toLoad = [
-    // 16421.GIF — outdoor graveyard/forest scene with large bare trees (1995 original)
-    // Crop x=0–220 to skip blank right margin; full height 200
-    { file: 'original-dos/stonet1/STONET/16421.GIF', key: 'forest',
-      crop: { x: 0, y: 0, w: 220, h: 200 } },
-    { file: 'original-dos/stonet1/TEXTURES/KAM1.GIF', key: 'stone_orig' },
-  ];
-  toLoad.forEach(({ file, key, crop }) => {
-    const img = new Image();
-    img.onload = () => {
-      const c = document.createElement('canvas');
-      c.width = img.naturalWidth; c.height = img.naturalHeight;
-      const cx2 = c.getContext('2d');
-      cx2.drawImage(img, 0, 0);
-      const idata = cx2.getImageData(0, 0, c.width, c.height);
-      textures[key] = buildTexFromGif(idata, c.width, c.height, crop);
-    };
-    img.src = file;
-  });
+(function loadForestTexture() {
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const cx2 = c.getContext('2d');
+    cx2.drawImage(img, 0, 0);
+    const idata = cx2.getImageData(0, 0, c.width, c.height);
+    // 11511.GIF: deep forest scene, 320×200 — use nearly the full image
+    // (4–5 prominent brown tree trunks against near-black dark background)
+    textures['forest'] = buildTexFromGif(idata, c.width, c.height,
+      { x: 5, y: 0, w: 305, h: 185 });
+  };
+  img.src = 'original-dos/stonet1/STONET/11511.GIF';
 })();
 
 // ── PLAYER ────────────────────────────────────────────────────────────────────
@@ -1300,19 +1288,19 @@ const zBuffer = new Float32Array(W);
 function renderGame3D() {
   const torch = 0.88 + Math.sin(torchPhase * 1.1) * 0.05
                      + Math.sin(torchPhase * 3.9) * 0.02;
+  const isForest = (currentLevel === 1);
 
-  // Floor / ceiling gradient — level-dependent theme
-  const isForest = currentLevel === 1;
+  // Floor / ceiling gradient — level-themed
   for (let y = 0; y < H3D; y++) {
     for (let x = 0; x < W; x++) {
       if (y < H3D >> 1) {
         const t = y / (H3D >> 1);
         if (isForest) {
-          // Night sky ceiling: near-black → dark navy towards horizon
+          // Dark forest canopy: near-black → very dark warm brown at horizon
           pxBuf(x, y,
-            (( 4 + t *  8) * torch) | 0,
-            (( 4 + t *  8) * torch) | 0,
-            ((10 + t * 18) * torch) | 0);
+            (( 5 + t * 22) * torch) | 0,
+            (( 3 + t * 12) * torch) | 0,
+            (( 2 + t *  6) * torch) | 0);
         } else {
           // Dungeon ceiling: dark slate blue
           pxBuf(x, y,
@@ -1323,24 +1311,23 @@ function renderGame3D() {
       } else {
         const t = (y - (H3D >> 1)) / (H3D >> 1);
         if (isForest) {
-          // Forest floor: dark leaf litter / earth (matches 16421.GIF orange-brown ground)
+          // Forest floor: golden fallen leaves (matches 11511.GIF ground)
           pxBuf(x, y,
-            ((22 + t * 40) * torch) | 0,
-            ((14 + t * 20) * torch) | 0,
-            (( 4 + t *  6) * torch) | 0);
+            ((30 + t * 60) * torch) | 0,
+            ((18 + t * 38) * torch) | 0,
+            (( 4 + t *  8) * torch) | 0);
         } else {
-          // Dungeon floor: cold dark stone
+          // Dungeon floor: cold stone
           pxBuf(x, y,
             ((10 + t * 18) * torch) | 0,
-            ((8  + t * 14) * torch) | 0,
-            ((6  + t * 10) * torch) | 0);
+            (( 8 + t * 14) * torch) | 0,
+            (( 6 + t * 10) * torch) | 0);
         }
       }
     }
   }
 
-  // Pick wall texture based on current level theme
-  const tex = isForest ? textures['forest'] : (textures['stone_orig'] || textures[1]);
+  const tex = isForest ? (textures['forest'] || textures[1]) : textures[1];
 
   // Wall raycasting (DDA)
   for (let sx = 0; sx < W; sx++) {
@@ -1382,11 +1369,11 @@ function renderGame3D() {
       const ti = (ty * TEX + tx) << 2;
       const f  = fog * side_d;
       if (isForest) {
-        // Forest: dark night atmosphere — cool blue-black fog, no tint
+        // Warm dark-forest atmosphere: slight red/orange boost, reduce blue
         pxBuf(sx, sy,
-          (tex[ti]   * f * 0.82) | 0,
-          (tex[ti+1] * f * 0.78) | 0,
-          (tex[ti+2] * f       ) | 0);
+          (tex[ti]   * f       ) | 0,
+          (tex[ti+1] * f * 0.85) | 0,
+          (tex[ti+2] * f * 0.60) | 0);
       } else {
         pxBuf(sx, sy,
           (tex[ti]   * f) | 0,
@@ -1595,7 +1582,7 @@ function renderHUD() {
   }
 
   // Level indicator
-  ctx.fillStyle = currentLevel===1 ? '#3a6a28' : '#3a4a6a';
+  ctx.fillStyle = currentLevel===1 ? '#6a4a18' : '#3a4a6a';
   ctx.font = '9px "Courier New", monospace';
   ctx.textAlign = 'left';
   ctx.fillText(currentLevel===1 ? 'FOREST' : 'DUNGEON', 6, hy+42);
