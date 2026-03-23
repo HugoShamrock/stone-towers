@@ -208,131 +208,54 @@ textures[1] = makeStoneTex(90, 88, 82);
 textures[2] = makeStoneTex(80, 58, 32);
 textures[3] = makeStoneTex(100, 28, 18);
 
-// ── LEVEL 1 SCENE GIFS (original 1995 VGA artwork) ───────────────────────────
-// Each GIF is 320×200, pure-black pixels treated as transparent (DOS convention).
-// All Level 1 rooms/directions/states — same set as original.html
+// ── LEVEL 1 FOREST TEXTURES (from original 1995 VGA scenes) ──────────────────
 
-const L1_GIF_IDS = [
-  '11511','11512','11521','11531','11541',
-  '11611','11621','11631','11632','11633','11641',
-  '12511','12521','12522','12523','12524','12525','12526','12527','12528','12531','12541',
-  '13511','13521','13531','13541','13542',
-  '14111','14112','14113','14121','14131','14141',
-  '14211','14221','14231','14241',
-  '14311','14312','14313','14314','14315','14316','14317','14321','14331','14341',
-  '14411','14421','14431','14432','14441',
-  '14511','14521','14522','14523','14524','14525','14526','14527','14528','14531','14541',
-  '14611','14612','14621','14631','14641',
-  '15411','15421','15431','15441',
-  '15611','15621','15631','15641',
-  '15711','15721','15731','15732','15733','15734','15735','15736','15737','15738','15741',
-  '16411','16412','16413','16414','16415','16416','16417','16418','16419','16421','16431','16441',
-  '16511','16521','16531','16541',
-  '16611','16621','16622','16631','16641',
-];
-
-const bitmaps = {};
-let gifLoadedCount = 0;
-const gifTotal = L1_GIF_IDS.length;
-
-// Process GIF: load into 320×200 canvas, set pure-black pixels transparent
-function processGif(img) {
-  const c = document.createElement('canvas');
-  c.width = 320; c.height = 200;
-  const cx2 = c.getContext('2d');
-  cx2.drawImage(img, 0, 0);
-  const id2 = cx2.getImageData(0, 0, 320, 200);
-  const d = id2.data;
-  for (let i = 0; i < d.length; i += 4)
-    if (d[i]===0 && d[i+1]===0 && d[i+2]===0) d[i+3] = 0;
-  cx2.putImageData(id2, 0, 0);
-  return c;
-}
-
-(function loadL1Gifs() {
-  L1_GIF_IDS.forEach(id => {
-    const img = new Image();
-    img.onload = () => { bitmaps[id] = processGif(img); gifLoadedCount++; };
-    img.onerror = () => { gifLoadedCount++; };
-    img.src = 'original-dos/stonet1/STONET/' + id + '.GIF';
-  });
-})();
-
-// Draw a Level-1 scene GIF onto the 3D view.
-// ox, oy are in original.html coordinate space (scene origin = 59,4 in 320×200).
-// We shift so the scene fills the full W×H3D canvas (scene starts at canvas origin).
-function drawGifL1(id, ox, oy) {
-  const bmp = bitmaps[id];
-  if (!bmp) return;
-  ctx.drawImage(bmp, 0, 0, 320, 200, (ox - 59) * 2, (oy - 4) * 2, W, H3D);
-}
-
-// Direction from player facing vector → 1=N 2=E 3=S 4=W
-function getDir4() {
-  const dx = player.dirX, dy = player.dirY;
-  if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? 2 : 4;
-  return dy > 0 ? 3 : 1;
-}
-
-// Render Level 1 using original 1995 VGA scene GIFs (same logic as original.html)
-function renderLevel1Scene() {
-  const gx = player.x | 0, gy = player.y | 0;
-  const dir = getDir4();
-  const state = (l1 && l1[gx] && l1[gx][gy]) ? (l1[gx][gy][dir] || 1) : 1;
-
-  // For rooms where creature renders as overlay, show plain corridor base (c5='1')
-  let c5 = state.toString();
-  if (gx===1&&gy===6&&dir===3&&(state===2||state===9))    c5='1';
-  if (gx===2&&gy===5&&dir===2&&(state>=4&&state<=9))      c5='1';
-  if (gx===4&&gy===5&&dir===2&&(state===4||state===8))    c5='1';
-  if (gx===5&&gy===7&&dir===3)                            c5='1';
-  if (gx===6&&gy===6&&dir===2&&state===2)                 c5='1';
-  if (gx===4&&gy===3&&dir===1&&(state===6||state===8))    c5='1';
-
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, W, H3D);
-
-  const roomId   = `1${gx}${gy}${dir}${c5}`;
-  const fallback = `1${gx}${gy}${dir}1`;
-  if (bitmaps[roomId])   drawGifL1(roomId,   59, 4);
-  else if (bitmaps[fallback]) drawGifL1(fallback, 59, 4);
-
-  const af = (tick / 8) | 0;
-
-  // Fire overlay — room (1,6) dir 3
-  if (gx===1&&gy===6&&dir===3&&l1[1][6][3]===2)
-    drawGifL1(af%2===0 ? '11632' : '11633', 119, 101);
-
-  // Bat overlay — room (2,5) dir 2
-  if (gx===2&&gy===5&&dir===2) {
-    const st = l1[2][5][2];
-    if (st===4)      drawGifL1(['12524','12525','12526'][af%3], 84, 39);
-    else if (st===9) drawGifL1('12528', 112, 117);
+// Sample a region of a GIF image into a 64×64 wall texture.
+// Near-black pixels (background/sky) are replaced with a dark bark colour so
+// the raycaster walls never show pure-black "holes".
+function buildTreeTex(img, cropX, cropY, cropW, cropH) {
+  const src = document.createElement('canvas');
+  src.width = img.naturalWidth; src.height = img.naturalHeight;
+  src.getContext('2d').drawImage(img, 0, 0);
+  const id = src.getContext('2d').getImageData(cropX, cropY, cropW, cropH);
+  const d = new Uint8ClampedArray(TEX * TEX * 4);
+  for (let ty = 0; ty < TEX; ty++) {
+    for (let tx = 0; tx < TEX; tx++) {
+      const sx = ((tx / TEX) * cropW) | 0;
+      const sy = ((ty / TEX) * cropH) | 0;
+      const si = (sy * cropW + sx) * 4;
+      let r = id.data[si], g = id.data[si+1], b = id.data[si+2];
+      // Replace near-black background with dark warm bark shadow
+      if (r + g + b < 40) { r = 35; g = 20; b = 8; }
+      const di = (ty * TEX + tx) * 4;
+      d[di] = r; d[di+1] = g; d[di+2] = b; d[di+3] = 255;
+    }
   }
-
-  // Magpie overlay — room (4,5) dir 2
-  if (gx===4&&gy===5&&dir===2) {
-    const st = l1[4][5][2];
-    if (st===1)      drawGifL1('14522', 128, 23);
-    else if (st===4) drawGifL1('14525', 128, 15);
-  }
-
-  // Wolf overlay — room (4,3) dir 1
-  if (gx===4&&gy===3&&dir===1&&l1[4][3][1]===6)
-    drawGifL1(['14315','14316','14317'][af%3], 119, 39);
-
-  // Druid overlay — room (5,7) dir 3
-  if (gx===5&&gy===7&&dir===3&&l1[5][7][3]===1) {
-    const pairs = [['15732','15735'],['15733','15736'],['15734','15737']];
-    const [a, b] = pairs[af%3];
-    drawGifL1(a, 221, 5);
-    drawGifL1(b, 168, 73);
-  }
-
-  // Goblin overlay — room (6,4) dir 1
-  if (gx===6&&gy===4&&dir===1&&l1[6][4][1]===1)
-    drawGifL1(af%2===0 ? '16411' : '16412', 60, 75);
+  return d;
 }
+
+// Async: load the two best forest GIFs and extract trunk textures.
+// textures['tree1'] – trunk texture from 11511.GIF (deep forest, 5 large trunks)
+// textures['tree2'] – trunk texture from 11611.GIF (forest tunnel corridor)
+// Both have a procedural stone fallback until the GIF loads.
+textures['tree1'] = makeStoneTex(78, 52, 22);   // warm brownish fallback
+textures['tree2'] = makeStoneTex(68, 46, 18);
+
+const STONET_BASE = 'original-dos/stonet1/STONET/';
+
+function loadTreeGif(file, texKey, cropX, cropY, cropW, cropH) {
+  const img = new Image();
+  img.onload = () => { textures[texKey] = buildTreeTex(img, cropX, cropY, cropW, cropH); };
+  img.src = STONET_BASE + file;
+}
+
+// 11511.GIF: deep forest, 4–5 large trunks.
+//   Crop x=35–185 (central three trunks), full height → 150×185
+loadTreeGif('11511.GIF', 'tree1', 35, 0, 150, 185);
+
+// 11611.GIF: forest tunnel corridor — trunks frame both sides.
+//   Crop x=0–160 (left half with left trunk), full height → 160×185
+loadTreeGif('11611.GIF', 'tree2',  0, 0, 160, 185);
 
 // ── PLAYER ────────────────────────────────────────────────────────────────────
 
@@ -1355,34 +1278,48 @@ function spritePx(id, u, v) {
 const zBuffer = new Float32Array(W);
 
 function renderGame3D() {
-  // Level 1: use original 1995 VGA scene GIFs (original.html rendering)
-  if (currentLevel === 1) {
-    renderLevel1Scene();
-    return;
-  }
-
   const torch = 0.88 + Math.sin(torchPhase * 1.1) * 0.05
                      + Math.sin(torchPhase * 3.9) * 0.02;
-  // Floor / ceiling gradient — level-themed
+  const forest = (currentLevel === 1);
+
+  // Floor / ceiling gradient — theme-dependent
   for (let y = 0; y < H3D; y++) {
     for (let x = 0; x < W; x++) {
       if (y < H3D >> 1) {
         const t = y / (H3D >> 1);
-        pxBuf(x, y,
-          ((14 + t *  9) * torch) | 0,
-          ((14 + t *  9) * torch) | 0,
-          ((20 + t * 13) * torch) | 0);
+        if (forest) {
+          // Forest canopy: near-black → very dark warm at horizon
+          pxBuf(x, y,
+            (( 8 + t * 20) * torch) | 0,
+            (( 5 + t * 12) * torch) | 0,
+            (( 2 + t *  5) * torch) | 0);
+        } else {
+          pxBuf(x, y,
+            ((14 + t *  9) * torch) | 0,
+            ((14 + t *  9) * torch) | 0,
+            ((20 + t * 13) * torch) | 0);
+        }
       } else {
         const t = (y - (H3D >> 1)) / (H3D >> 1);
-        pxBuf(x, y,
-          ((10 + t * 18) * torch) | 0,
-          (( 8 + t * 14) * torch) | 0,
-          (( 6 + t * 10) * torch) | 0);
+        if (forest) {
+          // Forest floor: golden fallen leaves (11611.GIF ground colour)
+          pxBuf(x, y,
+            ((35 + t * 65) * torch) | 0,
+            ((22 + t * 42) * torch) | 0,
+            (( 4 + t *  8) * torch) | 0);
+        } else {
+          pxBuf(x, y,
+            ((10 + t * 18) * torch) | 0,
+            (( 8 + t * 14) * torch) | 0,
+            (( 6 + t * 10) * torch) | 0);
+        }
       }
     }
   }
 
-  const tex = textures[1];
+  // Wall texture: alternate between two tree textures based on wall cell parity
+  const tex1 = textures['tree1'] || textures[1];
+  const tex2 = textures['tree2'] || textures[1];
 
   // Wall raycasting (DDA)
   for (let sx = 0; sx < W; sx++) {
@@ -1418,6 +1355,10 @@ function renderGame3D() {
     let   tp   = ((y0 - (H3D >> 1) + (lh >> 1)) * step);
     const fog    = Math.max(0, 1 - dist / FOG) * torch;
     const side_d = side === 1 ? 0.63 : 1.0;
+    // Forest: alternate tree textures so adjacent walls look different
+    const tex = forest
+      ? ((mx + my) % 2 === 0 ? tex1 : tex2)
+      : textures[1];
     for (let sy = y0; sy <= y1; sy++) {
       const ty = ((tp | 0) & (TEX - 1));
       tp += step;
@@ -1748,13 +1689,6 @@ function renderTitle() {
   ctx.fillStyle = blink ? `rgba(200,170,80,${fl})` : `rgba(100,80,30,${fl})`;
   ctx.font = '13px "Courier New", monospace';
   ctx.fillText('— Press ENTER or click to begin —', W/2, 352);
-  // GIF loading progress
-  if (gifLoadedCount < gifTotal) {
-    const pct = (gifLoadedCount / gifTotal * 100) | 0;
-    ctx.fillStyle = 'rgba(120,90,30,0.7)';
-    ctx.font = '11px "Courier New", monospace';
-    ctx.fillText(`Loading forest scenes... ${pct}%`, W/2, H-44);
-  }
   ctx.fillStyle = '#444';
   ctx.font = '11px "Courier New", monospace';
   ctx.fillText('WASD/arrows=move  Q/E=strafe  F/Space=attack  1-5=spells  M=map', W/2, H-24);
