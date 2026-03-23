@@ -14,6 +14,8 @@ Přehled všeho nalezeného v původních zdrojácích a stav zpracování.
 - [x] **Hybrid 2** (`hybrid2.html`) — ikony předmětů v inventáři, kontextové hinty u crosshairu
 - [x] **Hybrid 3** (`hybrid3.html`) — opravený oheň, mrtvý netopýr/skřet na zemi, sebíratelný diamant, železná brána
 - [x] **Hybrid 4** (`hybrid4.html`) — mrtvý netopýr zmizí po sebrání, kostlivec leží na zemi od začátku
+- [x] **Hybrid 5** (`hybrid5.html`) — dva levely: L1 11×11, L2 20×20 (5× větší), noví nepřátelé (pavouk, troll, dark knight), quest pro krystal
+- [x] **Hybrid 6** (`hybrid6.html`) — L1 stěny vykresleny z originálního VGA scény 16421.GIF (les s holými stromy, noční obloha)
 
 ### Rozcestník (`index.html`)
 - [x] Karty tří her s popisem a ovládáním
@@ -29,7 +31,7 @@ Přehled všeho nalezeného v původních zdrojácích a stav zpracování.
   - DEMO.FLI (březen 1997 — game demo, poslední stonet1 artefakt)
 - [x] **Stone Towers II sekce** — popis + CHB1–4 portréty postav + 11 herních screenshotů ze stonet2
 - [x] **Development Timeline** — 1992 → 1995 → 1996 → 1997 → 1998–99 → 2025
-- [x] **Redesign rozcestníku** — 5-sloupcový grid (Walker, Adventure, Original, DOS, ST II) + samostatná sekce hybrid vydání (H4→H1, H4 doporučená)
+- [x] **Redesign rozcestníku** — 5-sloupcový grid (Walker, Adventure, Original, DOS, ST II) + samostatná sekce hybrid vydání (H6→H1, H6 doporučená)
 
 ### Infrastruktura
 - [x] `← back to menu` odkaz ve všech třech hrách
@@ -136,4 +138,4 @@ Moderní prohlížeče to nativně neumí přehrát.
 
 ---
 
-*Naposledy aktualizováno: 2026-03-19*
+*Naposledy aktualizováno: 2026-03-23*

@@ -231,12 +231,17 @@ function makeForestBarkTex() {
 }
 
 // Build a 64×64 wall texture by scaling down a raw GIF ImageData
-function buildTexFromGif(idata, gw, gh) {
+// Optional crop: { x, y, w, h } in source pixels
+function buildTexFromGif(idata, gw, gh, crop) {
+  const cx = crop ? crop.x : 0;
+  const cy = crop ? crop.y : 0;
+  const cw = crop ? crop.w : gw;
+  const ch = crop ? crop.h : gh;
   const d = new Uint8ClampedArray(TEX * TEX * 4);
   for (let ty = 0; ty < TEX; ty++) {
     for (let tx = 0; tx < TEX; tx++) {
-      const gx = ((tx / TEX) * gw) | 0;
-      const gy = ((ty / TEX) * gh) | 0;
+      const gx = (cx + (tx / TEX) * cw) | 0;
+      const gy = (cy + (ty / TEX) * ch) | 0;
       const si = (gy * gw + gx) * 4;
       const di = (ty * TEX + tx) * 4;
       d[di] = idata.data[si]; d[di+1] = idata.data[si+1]; d[di+2] = idata.data[si+2]; d[di+3] = 255;
@@ -251,12 +256,14 @@ textures['stone_orig'] = textures[1];
 
 // Then upgrade asynchronously with original 1995 GIF textures
 (function loadOriginalTextures() {
-  const TEX_BASE = 'original-dos/stonet1/TEXTURES/';
   const toLoad = [
-    { file: '3DDESKA.GIF', key: 'forest'     },   // wooden boards → tree bark / forest
-    { file: 'KAM1.GIF',    key: 'stone_orig' },   // kámen (stone) → dungeon walls
+    // 16421.GIF — outdoor graveyard/forest scene with large bare trees (1995 original)
+    // Crop x=0–220 to skip blank right margin; full height 200
+    { file: 'original-dos/stonet1/STONET/16421.GIF', key: 'forest',
+      crop: { x: 0, y: 0, w: 220, h: 200 } },
+    { file: 'original-dos/stonet1/TEXTURES/KAM1.GIF', key: 'stone_orig' },
   ];
-  toLoad.forEach(({ file, key }) => {
+  toLoad.forEach(({ file, key, crop }) => {
     const img = new Image();
     img.onload = () => {
       const c = document.createElement('canvas');
@@ -264,9 +271,9 @@ textures['stone_orig'] = textures[1];
       const cx2 = c.getContext('2d');
       cx2.drawImage(img, 0, 0);
       const idata = cx2.getImageData(0, 0, c.width, c.height);
-      textures[key] = buildTexFromGif(idata, c.width, c.height);
+      textures[key] = buildTexFromGif(idata, c.width, c.height, crop);
     };
-    img.src = TEX_BASE + file;
+    img.src = file;
   });
 })();
 
@@ -1301,11 +1308,11 @@ function renderGame3D() {
       if (y < H3D >> 1) {
         const t = y / (H3D >> 1);
         if (isForest) {
-          // Canopy ceiling: deep green → lighter green towards horizon
+          // Night sky ceiling: near-black → dark navy towards horizon
           pxBuf(x, y,
-            ((8  + t * 18) * torch) | 0,
-            ((22 + t * 28) * torch) | 0,
-            ((8  + t * 14) * torch) | 0);
+            (( 4 + t *  8) * torch) | 0,
+            (( 4 + t *  8) * torch) | 0,
+            ((10 + t * 18) * torch) | 0);
         } else {
           // Dungeon ceiling: dark slate blue
           pxBuf(x, y,
@@ -1316,11 +1323,11 @@ function renderGame3D() {
       } else {
         const t = (y - (H3D >> 1)) / (H3D >> 1);
         if (isForest) {
-          // Forest floor: dark earth brown with moss green tint
+          // Forest floor: dark leaf litter / earth (matches 16421.GIF orange-brown ground)
           pxBuf(x, y,
-            ((16 + t * 28) * torch) | 0,
-            ((20 + t * 24) * torch) | 0,
-            ((6  + t *  8) * torch) | 0);
+            ((22 + t * 40) * torch) | 0,
+            ((14 + t * 20) * torch) | 0,
+            (( 4 + t *  6) * torch) | 0);
         } else {
           // Dungeon floor: cold dark stone
           pxBuf(x, y,
@@ -1375,11 +1382,11 @@ function renderGame3D() {
       const ti = (ty * TEX + tx) << 2;
       const f  = fog * side_d;
       if (isForest) {
-        // Forest: slight green atmospheric tint in the fog
+        // Forest: dark night atmosphere — cool blue-black fog, no tint
         pxBuf(sx, sy,
-          (tex[ti]   * f * 0.88) | 0,
-          (tex[ti+1] * f       ) | 0,
-          (tex[ti+2] * f * 0.72) | 0);
+          (tex[ti]   * f * 0.82) | 0,
+          (tex[ti+1] * f * 0.78) | 0,
+          (tex[ti+2] * f       ) | 0);
       } else {
         pxBuf(sx, sy,
           (tex[ti]   * f) | 0,

@@ -14,7 +14,9 @@ A Czech indie DOS game originally written in **Turbo Pascal 7** for MS-DOS, deve
 | [**Dungeon Walker**](https://hugoshamrock.github.io/stone-towers/walker.html) | First-person 3D | Explore a 20×20 stone maze. DDA raycasting engine based on `ENGINE.PAS`. |
 | [**The Adventure**](https://hugoshamrock.github.io/stone-towers/adventure.html) | Point-and-click RPG | Navigate a dungeon, collect items, cast spells, solve puzzles. Procedural graphics. |
 | [**The Adventure — Original Graphics**](https://hugoshamrock.github.io/stone-towers/original.html) | Point-and-click RPG | Same game, rendered with the authentic 1995 VGA artwork (129 GIF files from the original archive). |
-| [**Hybrid 4**](https://hugoshamrock.github.io/stone-towers/hybrid4.html) ★ | First-person 3D RPG | Most complete hybrid edition: 3D raycasting + 1995 GIF artwork + full RPG. Fixed fire sprite, dead creatures on floor, bat pickup disappears, skeleton lying down, iron gate at final room. |
+| [**Hybrid 6**](https://hugoshamrock.github.io/stone-towers/hybrid6.html) ★ | First-person 3D RPG | Hybrid 5 + Level 1 rendered with authentic 1995 VGA forest scene (bare trees, night sky) from the original game archive. |
+| [**Hybrid 5**](https://hugoshamrock.github.io/stone-towers/hybrid5.html) | First-person 3D RPG | Hybrid 4 + two-level dungeon: Level 1 (11×11) and Level 2 (20×20, 5× larger) with new enemies (spiders, troll, dark knight), items, and crystal quest. |
+| [**Hybrid 4**](https://hugoshamrock.github.io/stone-towers/hybrid4.html) | First-person 3D RPG | 3D raycasting + 1995 GIF artwork + full RPG. Fixed fire sprite, dead creatures on floor, bat pickup disappears, skeleton lying down, iron gate at final room. |
 | [**Hybrid 3**](https://hugoshamrock.github.io/stone-towers/hybrid3.html) | First-person 3D RPG | Hybrid 2 + fixed fire sprite, dead bat/goblin on floor, diamond pickup, iron gate. |
 | [**Hybrid 2**](https://hugoshamrock.github.io/stone-towers/hybrid2.html) | First-person 3D RPG | Hybrid 1 + item icons from original GIFs in inventory, context-sensitive hints at crosshair. |
 | [**Hybrid 1**](https://hugoshamrock.github.io/stone-towers/hybrid1.html) | First-person 3D RPG | 3D raycasting engine from Dungeon Walker combined with the original 1995 GIF artwork and full RPG mechanics from The Adventure. |
@@ -60,7 +62,9 @@ original.html     — The Adventure (original 1995 GIF artwork)
 hybrid1.html      — Hybrid 1: 3D engine + original artwork + full RPG
 hybrid2.html      — Hybrid 2: + item icons + crosshair hints
 hybrid3.html      — Hybrid 3: + fire fix + dead sprites + iron gate
-hybrid4.html      — Hybrid 4: + bat pickup clears sprite + skeleton lying down  ★ recommended
+hybrid4.html      — Hybrid 4: + bat pickup clears sprite + skeleton lying down
+hybrid5.html      — Hybrid 5: + two-level dungeon (11×11 → 20×20)
+hybrid6.html      — Hybrid 6: + 1995 forest scene as Level 1 walls  ★ recommended
 stonet2.html      — Stone Towers II: third-person RPG, 640×480, CEL sprites
 scenes.html       — 129 original VGA scenes (1995), grouped by area, lightbox
 story.html        — The Story (STONETOW.ERS, © 1995 WIZ)
